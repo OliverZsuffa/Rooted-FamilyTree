@@ -331,6 +331,7 @@ function App() {
   const savePerson = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !personName.trim()) return;
+    if (birthDate && deathDate && deathDate < birthDate) { setAttributeError('Death date cannot be before birth date.'); return; }
     const attributes: Record<string, string | number | boolean | null> = {};
     for (const row of attributeRows) {
       const key = row.key.trim();
