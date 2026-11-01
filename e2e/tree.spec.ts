@@ -30,8 +30,8 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__edge')).toHaveCount(2);
 });
 
-test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium');
+test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }, testInfo) => {
+  test.skip(browserName !== 'chromium' || testInfo.project.name !== 'mobile-chromium');
   await page.goto('/');
   await addPerson(page, 'Mobile Person');
   await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
