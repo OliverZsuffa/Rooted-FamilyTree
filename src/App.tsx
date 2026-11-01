@@ -396,9 +396,7 @@ function App() {
       : baseProject;
     const error = validateParentage(validationProject, relation);
     if (error) { setRelationError(error); return; }
-    const parentage = editingRelation?.kind === 'parentage'
-      ? validationProject.parentage.map((item) => item.id === editingRelation.id ? relation : item)
-      : [...validationProject.parentage, relation];
+    const parentage = [...validationProject.parentage, relation];
     commitProject(syncGenerationRows({ ...baseProject, parentage }));
     setDialog(null);
     setEditingRelation(null);
