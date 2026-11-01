@@ -35,7 +35,7 @@ Partnerships are deliberately excluded from traversal and generation calculation
 
 ## Verification
 
-Latest pull request CI run #364 passed:
+Latest pull request CI run #369 passed:
 - TypeScript typecheck.
 - 68 unit tests across 10 files.
 - 14 Playwright tests passed and 2 existing project-specific tests skipped. The new recursive cousin ordering browser test passed on desktop and mobile.
