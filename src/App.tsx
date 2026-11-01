@@ -374,6 +374,10 @@ function App() {
     const otherPersonId = newRelative?.id ?? relationPersonId;
     const baseProject = newRelative ? { ...project, people: [...project.people, newRelative] } : project;
     if (relationType === 'marriage' || relationType === 'partnership') {
+      if (partnershipStartDate && partnershipEndDate && partnershipEndDate < partnershipStartDate) {
+        setRelationError('The end date cannot be before the start date.');
+        return;
+      }
       const partnership = {
         id: editingRelation?.kind === 'partnership' ? editingRelation.id : crypto.randomUUID(),
         type: relationType, person1Id: selectedPerson.id, person2Id: otherPersonId,
