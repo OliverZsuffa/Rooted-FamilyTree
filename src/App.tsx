@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeProps,
   Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Heart, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
+import { Check, Download, Heart, LayoutGrid, Plus, Search, Sprout, Trash2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { loadProject, saveProject } from './data/database';
+import { projectSchema } from './domain/schema';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 type PersonNodeData = { person: Person; selected: boolean };
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
@@ -65,6 +67,9 @@ function App() {
   const [relationError, setRelationError] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const importInput = useRef<HTMLInputElement>(null);
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const { updateServiceWorker } = useRegisterSW({ immediate: true, onNeedRefresh: () => setNeedRefresh(true) });
 
   useEffect(() => {
     let active = true;
@@ -118,6 +123,46 @@ function App() {
       })),
     ];
   }, [project]);
+
+  const exportProject = () => {
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'rooted-family-tree.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importProject = async (file?: File) => {
+    if (!file) return;
+    try {
+      const parsed = projectSchema.safeParse(JSON.parse(await file.text()));
+      if (!parsed.success) {
+        window.alert('This file is not a valid Rooted backup. Your current tree has not been changed.');
+        return;
+      }
+      const generations = calculateGenerations(parsed.data);
+      const personIds = parsed.data.people.map((person) => person.id);
+      const relationshipIds = [...parsed.data.parentage, ...parsed.data.partnerships].map((item) => item.id);
+      const partnershipPeopleExist = parsed.data.partnerships.every((item) =>
+        personIds.includes(item.person1Id) && personIds.includes(item.person2Id) && item.person1Id !== item.person2Id);
+      if (!generations.ok || new Set(personIds).size !== personIds.length
+        || new Set(relationshipIds).size !== relationshipIds.length || !partnershipPeopleExist) {
+        window.alert('This backup contains conflicting relationships. Your current tree has not been changed.');
+        return;
+      }
+      if (window.confirm('Replace your current family tree with this backup?')) {
+        setProject(parsed.data);
+        setSelectedId(null);
+        setSearch('');
+      }
+    } catch {
+      window.alert('The backup could not be read. Your current tree has not been changed.');
+    } finally {
+      if (importInput.current) importInput.current.value = '';
+    }
+  };
 
   const openPerson = (person?: Person) => {
     setEditingPerson(person ?? null);
@@ -206,7 +251,11 @@ function App() {
         <a className="brand" href="./" aria-label="Rooted home"><span className="brand-mark"><Sprout size={19} strokeWidth={1.8} /></span><span>rooted</span></a>
         <div className="toolbar">
           <span className="save-state"><span className={`save-dot save-dot-${saveState}`} />{saveState === 'loading' ? 'Opening' : saveState === 'saving' ? 'Saving' : saveState === 'error' ? 'Save issue' : 'Saved'}</span>
-          <button className="icon-button" aria-label="Search people" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
+          <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
+          <button className="icon-button" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
+          <button className="icon-button" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
+          <input ref={importInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importProject(event.target.files?.[0])} />
+          <button className="icon-button" aria-label="Automatic layout" title="Reset automatic layout" onClick={() => setProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={16} /></button>
           <button className="primary-button" onClick={() => openPerson()}><Plus size={16} /> Add person</button>
         </div>
       </header>
@@ -260,6 +309,7 @@ function App() {
           )}
         </section>
       )}
+      {needRefresh && <div className="update-banner"><span>A new version is ready.</span><button className="primary-button" onClick={() => void updateServiceWorker(true)}>Update</button></div>}
       <footer className="footer"><span>Rooted</span><span>Kept on this device</span></footer>
 
       {dialog && (
