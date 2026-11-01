@@ -151,7 +151,7 @@ function App() {
     for (const partnership of project.partnerships) {
       const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
         && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
-      if (!sharedChildren.length || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
+      if (!sharedChildren.some((child) => visibleIds.has(child.childId)) || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
       const first = project.layout.manualPositions[partnership.person1Id] ?? automatic[partnership.person1Id] ?? { x: 0, y: 0 };
       const second = project.layout.manualPositions[partnership.person2Id] ?? automatic[partnership.person2Id] ?? { x: 0, y: 0 };
       const childGeneration = generationResult.ok ? generationResult.generations.get(sharedChildren[0].childId) ?? 1 : 1;
@@ -173,7 +173,8 @@ function App() {
       const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
         && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
       const junctionId = 'junction:' + partnership.id;
-      if (sharedChildren.length && visibleIds.has(junctionId)) {
+      const visibleSharedChildren = sharedChildren.filter((child) => visibleIds.has(child.childId));
+      if (visibleSharedChildren.length && visibleIds.has(junctionId)) {
         const firstRelation = sharedChildren[0];
         const secondRelation = project.parentage.find((relation) => relation.childId === firstRelation.childId && relation.parentId === partnership.person2Id);
         if (secondRelation) {
@@ -184,14 +185,14 @@ function App() {
             { id: partnership.id + ':second', source: partnership.person2Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
           );
         }
-        for (const child of sharedChildren) {
+        for (const child of visibleSharedChildren) {
           const partnerRelation = project.parentage.find((relation) => relation.childId === child.childId && relation.parentId === partnership.person2Id);
           if (!partnerRelation) continue;
           consumedParentage.add(child.id);
           consumedParentage.add(partnerRelation.id);
           result.push({ id: partnership.id + ':child:' + child.childId, source: junctionId, target: child.childId, type: 'smoothstep', style: { stroke: '#8b765e', strokeWidth: 1.5 } });
         }
-      } else if (!sharedChildren.length) {
+      } else if (!visibleSharedChildren.length) {
         result.push({
           id: partnership.id, source: partnership.person1Id, target: partnership.person2Id,
           type: 'straight', label: partnership.type === 'marriage' ? '♥' : '♡',
