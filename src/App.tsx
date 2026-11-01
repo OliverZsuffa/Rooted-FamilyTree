@@ -14,6 +14,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 
 type PersonNodeData = { person: Person; selected: boolean };
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
+type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
 type JunctionFlowNode = Node<{ symbol: string }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
@@ -101,6 +102,7 @@ function App() {
   const [relationPersonId, setRelationPersonId] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
   const [relationError, setRelationError] = useState('');
+  const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const importInput = useRef<HTMLInputElement>(null);
@@ -372,23 +374,37 @@ function App() {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationType === 'marriage' || relationType === 'partnership') {
-      commitProject({ ...project, partnerships: [...project.partnerships, {
-        id: crypto.randomUUID(), type: relationType, person1Id: selectedPerson.id, person2Id: relationPersonId,
+      const partnership = {
+        id: editingRelation?.kind === 'partnership' ? editingRelation.id : crypto.randomUUID(),
+        type: relationType, person1Id: selectedPerson.id, person2Id: relationPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
-      }] });
+      };
+      const partnerships = editingRelation?.kind === 'partnership'
+        ? project.partnerships.map((item) => item.id === editingRelation.id ? partnership : item)
+        : [...project.partnerships, partnership];
+      commitProject({ ...project, partnerships });
       setDialog(null);
+      setEditingRelation(null);
       setRelationError('');
       return;
     }
     const relation = {
-      id: crypto.randomUUID(), type: relationType,
+      id: editingRelation?.kind === 'parentage' ? editingRelation.id : crypto.randomUUID(),
+      type: relationType,
       parentId: relationDirection === 'child' ? selectedPerson.id : relationPersonId,
       childId: relationDirection === 'child' ? relationPersonId : selectedPerson.id,
     };
-    const error = validateParentage(project, relation);
+    const baseProject = editingRelation?.kind === 'parentage'
+      ? { ...project, parentage: project.parentage.filter((item) => item.id !== editingRelation.id) }
+      : project;
+    const error = validateParentage(baseProject, relation);
     if (error) { setRelationError(error); return; }
-    commitProject(syncGenerationRows({ ...project, parentage: [...project.parentage, relation] }));
+    const parentage = editingRelation?.kind === 'parentage'
+      ? project.parentage.map((item) => item.id === editingRelation.id ? relation : item)
+      : [...project.parentage, relation];
+    commitProject(syncGenerationRows({ ...project, parentage }));
     setDialog(null);
+    setEditingRelation(null);
     setRelationError('');
   };
 
