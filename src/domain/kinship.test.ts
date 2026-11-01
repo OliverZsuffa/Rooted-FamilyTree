@@ -47,6 +47,21 @@ describe('kinship labels', () => {
     expect(getKinshipLabel(project, 'child', 'cousin')).toBe('cousin');
   });
 
+  it('distinguishes half siblings and derives step relationships from recorded links', () => {
+    const project = fixture();
+    project.people.find((person) => person.id === 'father')!.gender = 'male';
+    project.people.find((person) => person.id === 'aunt')!.gender = 'female';
+    project.parentage = [
+      { id: '1', type: 'biological_parent', parentId: 'mother', childId: 'child' },
+      { id: '2', type: 'biological_parent', parentId: 'father', childId: 'child' },
+      { id: '3', type: 'biological_parent', parentId: 'father', childId: 'cousin' },
+      { id: '4', type: 'step_parent', parentId: 'aunt', childId: 'child' },
+    ];
+    expect(getKinshipLabel(project, 'child', 'cousin')).toBe('half-sibling');
+    expect(getKinshipLabel(project, 'child', 'aunt')).toBe('stepmother');
+    expect(getKinshipLabel(project, 'aunt', 'child')).toBe('stepchild');
+  });
+
   it('does not label unrelated people', () => {
     const project = fixture();
     expect(getKinshipLabel(project, 'child', 'unrelated')).toBeNull();
