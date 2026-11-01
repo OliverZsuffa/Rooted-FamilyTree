@@ -7,6 +7,7 @@ import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
+import { buildRelationshipEdges } from './domain/relationshipEdges';
 import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
@@ -299,52 +300,7 @@ function App() {
   }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    const visibleIds = new Set(nodes.map((node) => node.id));
-    const result: Edge[] = [];
-    const consumedParentage = new Set<string>();
-    for (const partnership of project.partnerships) {
-      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
-        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
-      const junctionId = 'junction:' + partnership.id;
-      const visibleSharedChildren = sharedChildren.filter((child) => visibleIds.has(child.childId));
-      if (visibleSharedChildren.length && visibleIds.has(junctionId)) {
-        const firstRelation = sharedChildren[0];
-        const secondRelation = project.parentage.find((relation) => relation.childId === firstRelation.childId && relation.parentId === partnership.person2Id);
-        if (secondRelation) {
-          consumedParentage.add(firstRelation.id);
-          consumedParentage.add(secondRelation.id);
-          result.push(
-            { id: partnership.id + ':first', source: partnership.person1Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-            { id: partnership.id + ':second', source: partnership.person2Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-          );
-        }
-        for (const child of visibleSharedChildren) {
-          const partnerRelation = project.parentage.find((relation) => relation.childId === child.childId && relation.parentId === partnership.person2Id);
-          if (!partnerRelation) continue;
-          consumedParentage.add(child.id);
-          consumedParentage.add(partnerRelation.id);
-          result.push({ id: partnership.id + ':child:' + child.childId, source: junctionId, target: child.childId, type: 'smoothstep', style: { stroke: '#8b765e', strokeWidth: 1.5 } });
-        }
-      } else if (!visibleSharedChildren.length) {
-        result.push({
-          id: partnership.id, source: partnership.person1Id, target: partnership.person2Id,
-          type: 'straight', label: partnership.type === 'marriage' ? '♥' : '♡',
-          labelStyle: { fill: '#78805a', fontSize: 13 }, style: { stroke: '#78805a', strokeWidth: 1.5 },
-        });
-      }
-    }
-    for (const relation of project.parentage) {
-      if (consumedParentage.has(relation.id)) continue;
-      result.push({
-        id: relation.id, source: relation.parentId, target: relation.childId,
-        type: 'smoothstep', animated: false,
-        style: { stroke: relation.type === 'biological_parent' ? '#8b765e' : '#a99a83', strokeWidth: 1.5, strokeDasharray: relation.type === 'guardian' || relation.type === 'step_parent' ? '5 4' : undefined },
-      });
-    }
-    return result.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)).map((edge) => ({
-      ...edge,
-      style: { ...edge.style, opacity: !selectedId || (highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15 },
-    }));
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
   }, [project, nodes, selectedId, highlightedIds]);
 
   const exportProject = () => {
