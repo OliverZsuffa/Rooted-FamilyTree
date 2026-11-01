@@ -25,6 +25,42 @@ describe('relationship edge construction', () => {
     expect(edges.some((edge) => edge.id === 'ab')).toBe(false);
   });
 
+  it('uses explicit vertical handles for parentage and family junction edges', () => {
+    const project = fixture();
+    project.parentage = [
+      { id: 'a-child', type: 'biological_parent', parentId: 'a', childId: 'c' },
+      { id: 'b-child', type: 'adoptive_parent', parentId: 'b', childId: 'c' },
+      { id: 'step', type: 'step_parent', parentId: 'd', childId: 'c' },
+    ];
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'family:a|b'], null, new Set());
+    const parentEdge = edges.find((edge) => edge.id === 'family:a|b:parent:a');
+    const childEdge = edges.find((edge) => edge.id === 'family:a|b:child:c');
+    const stepEdge = edges.find((edge) => edge.id === 'step');
+    expect(parentEdge).toMatchObject({ sourceHandle: 'parentage-out-bottom', targetHandle: 'family-in-top' });
+    expect(childEdge).toMatchObject({ sourceHandle: 'family-out-bottom', targetHandle: 'parentage-in-top' });
+    expect(stepEdge).toMatchObject({ sourceHandle: 'parentage-out-bottom', targetHandle: 'parentage-in-top' });
+  });
+
+  it('assigns separate deterministic lanes to overlapping family groups', () => {
+    const project = fixture();
+    project.parentage = [
+      { id: 'a-d', type: 'biological_parent', parentId: 'a', childId: 'd' },
+      { id: 'b-d', type: 'biological_parent', parentId: 'b', childId: 'd' },
+      { id: 'a-e', type: 'biological_parent', parentId: 'a', childId: 'e' },
+      { id: 'c-e', type: 'biological_parent', parentId: 'c', childId: 'e' },
+    ];
+    const visible = ['a', 'b', 'c', 'd', 'e', 'family:a|b', 'family:a|c'];
+    const positions = { a: { x: 0, y: 0 }, b: { x: 220, y: 0 }, c: { x: 440, y: 0 }, d: { x: 120, y: 190 }, e: { x: 340, y: 190 } };
+    const edges = buildRelationshipEdges(project, visible, null, new Set(), positions);
+    const first = edges.find((edge) => edge.id === 'family:a|b:parent:a');
+    const second = edges.find((edge) => edge.id === 'family:a|c:parent:a');
+    expect(first?.data?.routeLane).toBeDefined();
+    expect(second?.data?.routeLane).toBeDefined();
+    expect(first?.data?.routeLane).not.toEqual(second?.data?.routeLane);
+    const reordered = buildRelationshipEdges({ ...project, parentage: [...project.parentage].reverse() }, visible, null, new Set(), positions);
+    expect(reordered.find((edge) => edge.id === first?.id)?.data?.routeLane).toEqual(first?.data?.routeLane);
+  });
+
   it('keeps a partnership separate when it has no matching recorded children', () => {
     const project = fixture();
     project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [] }];

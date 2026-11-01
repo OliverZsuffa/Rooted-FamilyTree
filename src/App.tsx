@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
-  applyNodeChanges, Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
+  applyNodeChanges, Background, BaseEdge, Controls, getSmoothStepPath, ReactFlow, type Edge, type EdgeProps, type Node, type NodeChange, type NodeProps,
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -11,7 +11,7 @@ import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
 import { getFamilyGroups } from './domain/familyGroups';
-import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
+import { calculateAutoPositions, calculateFamilyJunctionPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
@@ -37,7 +37,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
     <div
       className={['person-card', data.selected && 'person-card-selected', data.dimmed && 'person-card-dimmed', incomplete && 'person-card-incomplete'].filter(Boolean).join(' ')}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Top} id="parentage-in-top" />
       <Handle type="target" position={Position.Left} id="partnership-in-left" />
       <Handle type="source" position={Position.Left} id="partnership-out-left" />
       <Handle type="target" position={Position.Right} id="partnership-in-right" />
@@ -46,19 +46,31 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       {genderLabel && <span className="person-card-gender" title={genderLabel} aria-label={genderLabel}>{data.person.gender === 'female' ? 'F' : data.person.gender === 'male' ? 'M' : 'NB'}</span>}
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} id="parentage-out-bottom" />
     </div>
   );
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
     <div className={['family-junction', data.dimmed && 'family-junction-dimmed', data.incomplete && 'family-junction-incomplete'].filter(Boolean).join(' ')} aria-label={data.incomplete ? 'Incomplete recorded family connection' : 'Recorded family connection'}>
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Top} id="family-in-top" />
       {data.symbol && <span className="family-junction-symbol" aria-label={data.symbol === '♥' ? 'Marriage' : 'Partnership'}>{data.symbol}</span>}
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} id="family-out-bottom" />
     </div>
   );
 }
+function FamilyRouteEdge(props: EdgeProps) {
+  const lane = Number((props.data as { routeLane?: number } | undefined)?.routeLane ?? 0);
+  const [path] = getSmoothStepPath({
+    sourceX: props.sourceX, sourceY: props.sourceY,
+    targetX: props.targetX, targetY: props.targetY,
+    sourcePosition: props.sourcePosition, targetPosition: props.targetPosition,
+    offset: 24 + lane * 14, borderRadius: 10,
+  });
+  return <BaseEdge id={props.id} path={path} style={props.style} />;
+}
+const edgeTypes = { familyRoute: FamilyRouteEdge };
+
 const nodeTypes = { person: PersonCard, family: JunctionCard };
 const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'biological_parent', label: 'Biological parent' },
@@ -341,16 +353,12 @@ function App() {
         dimmed: relationshipFinderOpen ? !relationshipHighlightIds.has(person.id) : !!selectedId && !highlightedIds.has(person.id),
       },
     }));
-    const positionsByPerson = new Map(personNodes.map((node) => [node.id, node.position]));
+    const effectivePositions = { ...automatic, ...Object.fromEntries(personNodes.map((node) => [node.id, node.position])) };
+    calculateFamilyJunctionPositions(project, effectivePositions);
     const junctionNodes: JunctionFlowNode[] = getFamilyGroups(project)
       .filter((group) => group.parentIds.every((id) => visibleIds.has(id)) && group.childIds.some((id) => visibleIds.has(id)))
       .map((group) => {
-        const parents = group.parentIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
-        const children = group.childIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
-        const position = parents.length && children.length ? {
-          x: (parents.reduce((sum, point) => sum + point.x + 88, 0) / parents.length + children.reduce((sum, point) => sum + point.x + 88, 0) / children.length) / 2 - 12,
-          y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
-        } : automatic[group.id] ?? { x: 0, y: 0 };
+        const position = effectivePositions[group.id] ?? { x: 0, y: 0 };
         return {
           id: group.id,
           type: 'family',
@@ -685,6 +693,7 @@ function App() {
             nodes={flowNodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodeClick={(_event, node) => { if (project.people.some((person) => person.id === node.id)) setSelectedId(node.id); }}
             onPaneClick={() => setSelectedId(null)}
             onNodesChange={onNodesChange}
