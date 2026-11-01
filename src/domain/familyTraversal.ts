@@ -134,7 +134,8 @@ function optimiseRows(
   for (const generation of generations) {
     const blocks = new Map<string, string[]>();
     for (const id of rows.get(generation) ?? []) {
-      const key = JSON.stringify(parentsByChild.get(id) ?? []);
+      const parentIds = parentsByChild.get(id) ?? [];
+      const key = parentIds.length ? JSON.stringify(parentIds) : JSON.stringify(['root', id]);
       blocks.set(key, [...(blocks.get(key) ?? []), id]);
     }
     const seen = new Set<string>();
