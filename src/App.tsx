@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type TouchEvent as ReactTouchEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
-  Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
+  applyNodeChanges, Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -17,9 +17,6 @@ type PersonNodeData = {
   person: Person;
   selected: boolean;
   dimmed: boolean;
-  onTouchDragStart: (id: string, clientX: number, clientY: number, positionX: number, positionY: number) => void;
-  onTouchDragMove: (clientX: number, clientY: number) => void;
-  onTouchDragStop: () => void;
 };
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
@@ -27,36 +24,13 @@ type PersonFlowNode = Node<PersonNodeData, 'person'>;
 type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
-function PersonCard({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<PersonFlowNode>) {
+function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
-  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 1) return;
-    event.stopPropagation();
-    const touch = event.touches[0];
-    data.onTouchDragStart(data.person.id, touch.clientX, touch.clientY, positionAbsoluteX, positionAbsoluteY);
-  };
-  const handleTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 1) {
-      data.onTouchDragStop();
-      return;
-    }
-    event.stopPropagation();
-    const touch = event.touches[0];
-    data.onTouchDragMove(touch.clientX, touch.clientY);
-  };
-  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
-    event.stopPropagation();
-    data.onTouchDragStop();
-  };
   return (
     <div
       className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
-      onTouchStartCapture={handleTouchStart}
-      onTouchMoveCapture={handleTouchMove}
-      onTouchEndCapture={handleTouchEnd}
-      onTouchCancelCapture={handleTouchEnd}
     >
       <Handle type="target" position={Position.Top} />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
@@ -99,8 +73,8 @@ function syncGenerationRows(project: Project): Project {
 function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
-  const dragStartProject = useRef<Project | null>(null);
-  const touchDrag = useRef<{ id: string; clientX: number; clientY: number; positionX: number; positionY: number; before: Project } | null>(null);
+  const dragStart = useRef<{ project: Project; id: string; position: { x: number; y: number } } | null>(null);
+  const [flowNodes, setFlowNodes] = useState<FlowNode[]>([]);
   const reactFlowInstance = useRef<ReactFlowInstance<FlowNode, Edge> | null>(null);
   const lastFittedStructure = useRef('');
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
@@ -139,44 +113,6 @@ function App() {
     if (recordHistory) setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
     projectRef.current = updated;
     setProject(updated);
-  }, []);
-
-  const onPersonTouchDragStart = useCallback((
-    id: string, clientX: number, clientY: number, positionX: number, positionY: number,
-  ) => {
-    const before = projectRef.current;
-    if (!before || !before.people.some((person) => person.id === id)) return;
-    touchDrag.current = { id, clientX, clientY, positionX, positionY, before };
-  }, []);
-
-  const onPersonTouchDragMove = useCallback((clientX: number, clientY: number) => {
-    const drag = touchDrag.current;
-    const current = projectRef.current;
-    const flow = reactFlowInstance.current;
-    if (!drag || !current || !flow) return;
-    const start = flow.screenToFlowPosition({ x: drag.clientX, y: drag.clientY });
-    const next = flow.screenToFlowPosition({ x: clientX, y: clientY });
-    const generations = calculateGenerations(current);
-    const generation = generations.ok ? generations.generations.get(drag.id) ?? 0 : 0;
-    const y = Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, drag.positionY + next.y - start.y));
-    commitProject({
-      ...current,
-      layout: {
-        manualPositions: {
-          ...current.layout.manualPositions,
-          [drag.id]: { x: drag.positionX + next.x - start.x, y },
-        },
-      },
-    }, false);
-  }, [commitProject]);
-
-  const onPersonTouchDragStop = useCallback(() => {
-    const drag = touchDrag.current;
-    const after = projectRef.current;
-    if (drag && after && drag.before !== after) {
-      setHistory((state) => ({ past: [...state.past, drag.before].slice(-50), future: [] }));
-    }
-    touchDrag.current = null;
   }, []);
 
   const undo = () => {
@@ -355,9 +291,6 @@ function App() {
         person,
         selected: person.id === selectedId,
         dimmed: !!selectedId && !highlightedIds.has(person.id),
-        onTouchDragStart: onPersonTouchDragStart,
-        onTouchDragMove: onPersonTouchDragMove,
-        onTouchDragStop: onPersonTouchDragStop,
       },
     }));
     const junctionNodes: JunctionFlowNode[] = [];
@@ -375,7 +308,11 @@ function App() {
       });
     }
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds, onPersonTouchDragStart, onPersonTouchDragMove, onPersonTouchDragStop]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
+  useEffect(() => {
+    setFlowNodes(nodes);
+  }, [nodes]);
+
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
     return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
@@ -550,34 +487,36 @@ function App() {
   };
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
-    const moved = changes.filter((change) => change.type === 'position' && change.position);
-    if (!moved.length) return;
-    commitProject((current) => {
-      if (!current) return current;
-      const result = calculateGenerations(current);
-      if (!result.ok) return current;
-      const manualPositions = { ...current.layout.manualPositions };
-      for (const change of moved) {
-        if (change.type !== 'position' || !change.position) continue;
-        const generation = result.generations.get(change.id) ?? 0;
-        manualPositions[change.id] = { x: change.position.x, y: Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, change.position.y)) };
-      }
-      return { ...current, layout: { manualPositions } };
-    }, false);
+    setFlowNodes((current) => applyNodeChanges(changes, current));
+  }, []);
+
+  const onNodeDragStart = useCallback((_event: MouseEvent | TouchEvent, node: FlowNode) => {
+    const current = projectRef.current;
+    if (!current || node.type !== 'person') return;
+    dragStart.current = { project: current, id: node.id, position: { ...node.position } };
+  }, []);
+
+  const onNodeDragStop = useCallback((_event: MouseEvent | TouchEvent, node: FlowNode) => {
+    const start = dragStart.current;
+    dragStart.current = null;
+    const current = projectRef.current;
+    if (!start || !current || node.type !== 'person' || start.id !== node.id) return;
+    if (start.position.x === node.position.x && start.position.y === node.position.y) return;
+
+    const result = calculateGenerations(current);
+    if (!result.ok) return;
+    const generation = result.generations.get(node.id) ?? 0;
+    const y = Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, node.position.y));
+    commitProject({
+      ...current,
+      layout: {
+        manualPositions: {
+          ...current.layout.manualPositions,
+          [node.id]: { x: node.position.x, y },
+        },
+      },
+    });
   }, [commitProject]);
-
-  const onNodeDragStart = useCallback(() => {
-    dragStartProject.current = projectRef.current;
-  }, []);
-
-  const onNodeDragStop = useCallback(() => {
-    const before = dragStartProject.current;
-    const after = projectRef.current;
-    if (before && after && before !== after) {
-      setHistory((state) => ({ past: [...state.past, before].slice(-50), future: [] }));
-    }
-    dragStartProject.current = null;
-  }, []);
 
 
 
@@ -619,7 +558,7 @@ function App() {
           <div className="tree-hint">Select a person to view their details. Drag to arrange within each generation.</div>
           {search && !nodes.some((node) => node.type === 'person') && <div className="search-empty">No matching people.</div>}
           <ReactFlow
-            nodes={nodes}
+            nodes={flowNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodeClick={(_event, node) => { if (project.people.some((person) => person.id === node.id)) setSelectedId(node.id); }}
