@@ -346,7 +346,7 @@ function App() {
         const children = group.childIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
         const points = [...parents, ...children];
         const position = parents.length && children.length ? {
-          x: points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9,
+          x: (parents.reduce((sum, point) => sum + point.x + 88, 0) / parents.length + children.reduce((sum, point) => sum + point.x + 88, 0) / children.length) / 2 - 12,
           y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
         } : automatic[group.id] ?? { x: 0, y: 0 };
         return {

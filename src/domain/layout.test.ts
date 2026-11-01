@@ -21,6 +21,21 @@ describe('fallback family-tree layout', () => {
     expect(positions.d.y).toBeGreaterThan(positions.c.y);
   });
 
+  it('centres the family junction between parent and child groups', () => {
+    const project = createEmptyProject();
+    project.people = ['parentA', 'parentB', 'childA', 'childB', 'childC'].map((id) => ({
+      id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+    }));
+    project.parentage = project.people.slice(2).flatMap((child) => [
+      { id: 'a-' + child.id, type: 'biological_parent' as const, parentId: 'parentA', childId: child.id },
+      { id: 'b-' + child.id, type: 'biological_parent' as const, parentId: 'parentB', childId: child.id },
+    ]);
+    const positions = createFallbackPositions(project);
+    const parentCenter = (positions.parentA.x + positions.parentB.x) / 2 + 88;
+    const childCenter = (positions.childA.x + positions.childB.x + positions.childC.x) / 3 + 88;
+    expect(positions['family:parentA|parentB'].x + 9).toBeCloseTo((parentCenter + childCenter) / 2);
+  });
+
   it('returns no stale positions for an empty replacement tree', () => {
     const project = createEmptyProject();
     expect(createFallbackPositions(project)).toEqual({});
