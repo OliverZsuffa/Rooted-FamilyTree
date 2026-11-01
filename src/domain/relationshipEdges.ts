@@ -7,7 +7,7 @@ export function buildRelationshipEdges(
   visibleNodeIds: Iterable<string>,
   selectedId: string | null,
   highlightedIds: Set<string>,
-  _positions: Record<string, { x: number; y: number }> = {},
+  positions: Record<string, { x: number; y: number }> = {},
 ): Edge[] {
   const visibleIds = new Set(visibleNodeIds);
   const result: Edge[] = [];
@@ -42,7 +42,6 @@ export function buildRelationshipEdges(
         sourceHandle: 'family-out-bottom',
         targetHandle: 'parentage-in-top',
         type: 'familyRoute',
-        data: { routeLane: routeLanes.get(group.id) ?? 0 },
         style: { stroke: project.parentage.some((relation) => relation.childId === childId && group.parentIds.includes(relation.parentId) && relation.manualIncomplete) ? 'var(--edge-incomplete)' : 'var(--edge-parentage)', strokeWidth: 1.5 },
       });
     }
