@@ -84,7 +84,6 @@ export function findRelationshipPath(project: Project, firstId: string, secondId
     const subjectParents = parentIds(firstId);
     const subjectChildren = project.parentage.filter((item) =>
       (item.type === 'biological_parent' || item.type === 'adoptive_parent') && item.parentId === firstId).map((item) => item.childId);
-    const relativeParents = parentIds(secondId);
     const partnerIds = project.partnerships.flatMap((item) =>
       item.person1Id === firstId ? [item.person2Id] : item.person2Id === firstId ? [item.person1Id] : []);
     const siblingOfSubject = project.people.some((person) => person.id !== firstId && areSiblings(firstId, person.id) && isPartner(person.id, secondId));
