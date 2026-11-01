@@ -271,17 +271,34 @@ function App() {
   const savePerson = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !personName.trim()) return;
+    const attributes: Record<string, string | number | boolean | null> = {};
+    for (const row of attributeRows) {
+      const key = row.key.trim();
+      if (!key) continue;
+      if (Object.prototype.hasOwnProperty.call(attributes, key)) { setAttributeError('Each detail needs a unique name.'); return; }
+      if (row.type === 'number') {
+        if (!row.value.trim()) attributes[key] = null;
+        else if (Number.isFinite(Number(row.value))) attributes[key] = Number(row.value);
+        else { setAttributeError('Enter a valid number for ' + key + '.'); return; }
+      } else if (row.type === 'boolean') attributes[key] = row.value === 'true';
+      else attributes[key] = row.value;
+    }
     if (editingPerson) {
       setProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null }
+        ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
-      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes: {}, displayAttribute: null };
+      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null };
       setProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
     setDialog(null);
+    setAttributeError('');
+  };
+
+  const updateAttributeRow = (index: number, field: keyof AttributeRow, value: string) => {
+    setAttributeRows((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row));
   };
 
   const saveRelationship = (event: FormEvent) => {
