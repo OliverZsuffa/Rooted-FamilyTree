@@ -615,6 +615,7 @@ function App() {
           <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
           <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
+          <button className="icon-button" aria-label="Find relationship" title="Find relationship" onClick={() => { setRelationshipFinderOpen(true); setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); setSearch(''); setSearchOpen(false); setSelectedId(null); }}><GitFork size={17} /></button>
           <button className="icon-button desktop-only" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
           <button className="icon-button desktop-only" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
           <input ref={importInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importProject(event.target.files?.[0])} />
@@ -638,6 +639,16 @@ function App() {
       ) : (
         <section className="tree-workspace">
           <div className="tree-hint">Select a person to view their details. Drag to arrange within each generation.</div>
+          {relationshipFinderOpen && (
+            <section className="relationship-finder" aria-label="Relationship finder">
+              <div className="finder-heading"><strong>Find relationship</strong><button className="icon-button" aria-label="Close relationship finder" onClick={() => { setRelationshipFinderOpen(false); setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); }}><X size={15} /></button></div>
+              <label>From<input list="relationship-people" value={relationshipFirstQuery} placeholder="Choose first person" onChange={(event) => { const value = event.target.value; setRelationshipFirstQuery(value); setRelationshipFirstId(project.people.find((person) => person.name.toLowerCase() === value.trim().toLowerCase())?.id ?? ''); }} /></label>
+              <label>To<input list="relationship-people" value={relationshipSecondQuery} placeholder="Choose second person" onChange={(event) => { const value = event.target.value; setRelationshipSecondQuery(value); setRelationshipSecondId(project.people.find((person) => person.name.toLowerCase() === value.trim().toLowerCase())?.id ?? ''); }} /></label>
+              <datalist id="relationship-people">{project.people.map((person) => <option key={person.id} value={person.name} />)}</datalist>
+              {relationshipFirstId && relationshipSecondId && <div className="finder-result">{relationshipPath ? <><strong>{relationshipPath.label}</strong>{relationshipPath.ambiguous && <p>There are {relationshipPath.alternativeCount + 1} equally short recorded paths. One is highlighted.</p>}</> : <strong>No recorded relationship path found.</strong>}</div>}
+              <div className="finder-actions"><button className="text-button" disabled={!relationshipFirstId || !relationshipSecondId} onClick={() => { setRelationshipFirstId(relationshipSecondId); setRelationshipSecondId(relationshipFirstId); setRelationshipFirstQuery(relationshipSecondQuery); setRelationshipSecondQuery(relationshipFirstQuery); }}>Swap</button><button className="text-button" onClick={() => { setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); }}>Clear</button></div>
+            </section>
+          )}
           {search && !nodes.some((node) => node.type === 'person') && <div className="search-empty">No matching people.</div>}
           <ReactFlow
             nodes={flowNodes}
@@ -674,14 +685,6 @@ function App() {
               <h2>{selectedPerson.name || 'Unnamed person'}</h2>
               <p className="panel-dates">{selectedPerson.birthDate || 'Birth date unknown'}{selectedPerson.deathDate ? ` · ${selectedPerson.deathDate}` : ''}</p>
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
-              {getKinshipRows(project, selectedPerson.id).length > 0 && (
-                <div className="relationship-list">
-                  <span className="relationship-heading">Family connections</span>
-                  {getKinshipRows(project, selectedPerson.id).map(({ person, label }) => (
-                    <div className="relationship-row" key={person.id}><span>{person.name} · {label}</span></div>
-                  ))}
-                </div>
-              )}
               {selectedPerson.nameHistory.length > 0 && (
                 <div className="relationship-list">
                   <span className="relationship-heading">Previous names</span>
