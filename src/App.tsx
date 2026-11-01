@@ -637,7 +637,7 @@ function App() {
                   <select required value={relationPersonId} onChange={(event) => setRelationPersonId(event.target.value)}>
                     <option value="">Choose a person</option>
                     {project.people.filter((person) => person.id !== selectedPerson?.id).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-                    <option value="__new__">Create a new person…</option>
+                    <option value="__new__" disabled={!!editingRelation}>Create a new person…</option>
                   </select>
                 </label>
                 {relationPersonId === '__new__' && <label>New person’s name<input autoFocus required value={newRelativeName} onChange={(event) => setNewRelativeName(event.target.value)} placeholder="Full name" /></label>}
