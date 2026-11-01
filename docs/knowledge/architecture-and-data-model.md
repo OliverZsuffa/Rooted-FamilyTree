@@ -26,7 +26,7 @@ Generation calculation works per connected ancestry component. Relative offsets 
 
 ## Layout boundary
 
-The visual graph is derived from domain data. ELK.js calculates default horizontal positions. Generation rows determine vertical placement. Users can drag people horizontally within their calculated generation. Manual coordinates are stored separately from relationships and survive ordinary edits.
+The visual graph is derived from domain data. ELK.js calculates default positions. Generation rows determine the allowed vertical band. Users can drag people horizontally and make small vertical adjustments without changing their calculated generation. Manual coordinates are stored separately from relationships and survive ordinary edits.
 
 Where two partnered people are both connected as parents to a child, the canvas renders a shared partnership junction. Other parentage links remain direct edges. A partnership without shared children is rendered as a line with a small symbol.
 
