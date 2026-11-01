@@ -235,11 +235,17 @@ test('creates, edits, and reloads a person with only a first name', async ({ pag
 });
 
 async function addParentChild(page: import('@playwright/test').Page, parent: string, child: string) {
-  await page.locator('.react-flow__node-person').filter({ hasText: parent }).click();
-  await page.getByRole('button', { name: 'Add relationship' }).click();
+  const personNode = page.locator('.react-flow__node-person').filter({
+    has: page.getByText(parent, { exact: true }),
+  });
+  await expect(personNode).toHaveCount(1);
+  await personNode.locator('.person-card').click();
+  await expect(page.locator('.person-panel h2')).toHaveText(parent);
+  await page.locator('.person-panel').getByRole('button', { name: 'Add relationship' }).click();
   await page.getByLabel('Connect to').selectOption({ label: child });
   await page.getByRole('button', { name: 'Save relationship' }).click();
-  await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
+  await expect(page.locator('.person-panel h2')).toHaveText(parent);
+  await page.locator('.person-panel').getByRole('button', { name: 'Close details' }).click();
 }
 
 test('keeps cousin branches aligned through recursive ancestor expansion', async ({ page }) => {

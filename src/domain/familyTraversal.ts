@@ -18,6 +18,7 @@ function createSiblingClusters(
   generation: number,
   generations: Map<string, number>,
   childrenByParent: Map<string, string[]>,
+  parentsByChild: Map<string, string[]>,
 ): { clusters: Map<string, string[]>; clusterByPerson: Map<string, string> } {
   const parent = new Map(personIds.map((id) => [id, id]));
   const find = (id: string): string => {
@@ -49,7 +50,16 @@ function createSiblingClusters(
     clusters.set(key, [...(clusters.get(key) ?? []), id]);
     clusterByPerson.set(id, key);
   }
-  for (const members of clusters.values()) members.sort(compareIds);
+  for (const members of clusters.values()) {
+    const groupsByParentSet = new Map<string, string[]>();
+    for (const member of members) {
+      const parentSetKey = (parentsByChild.get(member) ?? []).join('|');
+      groupsByParentSet.set(parentSetKey, [...(groupsByParentSet.get(parentSetKey) ?? []), member]);
+    }
+    const orderedGroups = [...groupsByParentSet.entries()].sort((first, second) =>
+      first[1].length - second[1].length || compareIds(first[0], second[0]));
+    members.splice(0, members.length, ...orderedGroups.flatMap(([, groupMembers]) => groupMembers.sort(compareIds)));
+  }
   return { clusters, clusterByPerson };
 }
 
@@ -116,9 +126,26 @@ export function buildFamilyTraversal(
 
     for (let generation = minimumGeneration; generation <= maximumGeneration; generation += 1) {
       const rowIds = componentIds.filter((id) => (generations.get(id) ?? 0) === generation);
-      const siblingData = createSiblingClusters(rowIds, generation, generations, childrenByParent);
+      const siblingData = createSiblingClusters(rowIds, generation, generations, childrenByParent, parentsByChild);
       clustersByGeneration.set(generation, siblingData.clusters);
       for (const [personId, clusterId] of siblingData.clusterByPerson) clusterByPerson.set(personId, clusterId);
+    }
+
+    // Parents participating in several distinct exact-parent-set groups are
+    // structural anchors for the branches below them. Put those shared parents
+    // first, then preserve the encounter order of their partner branches.
+    const parentFamilySetCount = new Map<string, number>();
+    const countedParentSets = new Set<string>();
+    for (const parentIds of parentsByChild.values()) {
+      const parentSetKey = parentIds.join('|');
+      for (const parentId of parentIds) {
+        const seenSets = parentFamilySetCount.get(parentId) ?? 0;
+        const key = parentId + '\\u0000' + parentSetKey;
+        if (!countedParentSets.has(key)) {
+          countedParentSets.add(key);
+          parentFamilySetCount.set(parentId, seenSets + 1);
+        }
+      }
     }
 
     // Start with the youngest row. Every sibling network is kept together.
@@ -146,6 +173,9 @@ export function buildFamilyTraversal(
 
       const clusters = clustersByGeneration.get(generation) ?? new Map<string, string[]>();
       const orderedClusterIds = [...clusters.keys()].sort((first, second) => {
+        const firstAnchor = Math.max(...(clusters.get(first) ?? []).map((id) => parentFamilySetCount.get(id) ?? 0));
+        const secondAnchor = Math.max(...(clusters.get(second) ?? []).map((id) => parentFamilySetCount.get(id) ?? 0));
+        if (firstAnchor !== secondAnchor) return secondAnchor - firstAnchor;
         const firstSeen = firstSeenCluster.get(first);
         const secondSeen = firstSeenCluster.get(second);
         if (firstSeen !== undefined || secondSeen !== undefined) {
