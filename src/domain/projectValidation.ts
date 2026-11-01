@@ -39,6 +39,14 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
     return { success: false, error: 'A partnership contains an invalid person reference or date range.' };
   }
 
+  if (project.partnerships.some((item) => item.nameChanges.some((change) =>
+    change.personId !== item.person1Id && change.personId !== item.person2Id))) {
+    return { success: false, error: 'A marriage name change refers to someone outside that partnership.' };
+  }
+  if (project.people.some((person) => new Set(person.nameHistory.map((entry) => entry.id)).size !== person.nameHistory.length)) {
+    return { success: false, error: 'A person contains duplicate name history records.' };
+  }
+
   const generations = calculateGenerations(project);
   if (!generations.ok) return { success: false, error: generations.error };
   return { success: true, project };
