@@ -122,3 +122,5 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   .footer > span:nth-child(2) { display: none; }
   .person-panel { max-height: 52dvh; }
 }
+
+.modal { max-height: calc(100dvh - 36px); overflow-y: auto; }
