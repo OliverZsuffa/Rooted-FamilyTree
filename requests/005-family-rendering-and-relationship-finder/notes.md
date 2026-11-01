@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation complete on `request/005-family-rendering-and-relationship-finder`. Pull request #5 is open. Awaiting merge after final PR checks.
+Implementation complete and merged into `main` through PR #5. Merge commit: `e34e5e9d7b1b6856a1b5b582dee2c56e0f7f72d1`.
 
 ## Decisions
 
