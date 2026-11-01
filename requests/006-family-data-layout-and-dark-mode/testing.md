@@ -2,12 +2,12 @@
 
 ## Status
 
-Implementation is in progress. The checks below distinguish verified work from remaining coverage.
+Implementation is in progress. Verified against branch commit `c934ea06437cd38f1f6e090c031cb7a351dc57f7`, GitHub Actions run `41329675064`. The checks below distinguish verified work from remaining coverage.
 
 ## Verified by GitHub Actions run 41329003228
 - [x] TypeScript type check.
-- [x] 49 unit tests across 9 test files.
-- [x] 8 Playwright browser tests passed.
+- [x] 52 unit tests across 9 test files.
+- [x] 10 Playwright browser tests passed.
 - [x] Production build.
 - [x] PWA build verification.
 - [x] Legacy version 1 project parsing with the original single name field.
@@ -18,6 +18,7 @@ Implementation is in progress. The checks below distinguish verified work from r
 - [x] Automatic incompleteness clears when required structured fields, gender and birth date are supplied.
 - [x] Person theme choice toggles and persists across reload.
 - [x] Direct ancestry, sibling, half sibling and step labels.
+- [x] Direct adoptive parent and adopted child labels.
 - [x] Great aunt, great niece, cousin degree and cousin removal labels.
 - [x] Ambiguous shortest relationship paths are detected by the relationship finder.
 - [x] Family junction centring regression test.
@@ -47,7 +48,7 @@ Implementation is in progress. The checks below distinguish verified work from r
 
 ## Relationship completeness
 - [x] Unit tests verify incomplete parentage and partnership edges use the warning colour token.
-- [x] Browser test verifies a manually incomplete parentage marker persists across reload.
+- [x] Browser test verifies a manually incomplete parentage marker persists across reload on desktop and mobile.
 - [ ] Verify manual incomplete flags through export and import.
 - [ ] Verify red markers on all relationship line types and family junctions in both themes.
 - [ ] Verify no incompleteness overview or dashboard is present.
@@ -65,6 +66,7 @@ Implementation is in progress. The checks below distinguish verified work from r
 
 ## Layout
 - [x] Family junction centred between parent and child group centres.
+- [x] Full and half siblings sharing recorded parents are clustered in the same generation.
 - [x] Full and half siblings sharing recorded parents are clustered in the same generation.
 - [x] Existing disconnected-node collision test passes.
 - [x] Verify a full and half sibling cluster remains contiguous.

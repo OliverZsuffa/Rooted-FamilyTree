@@ -51,7 +51,7 @@ Completed and committed so far:
 - Family junction x positioning now uses the midpoint between the parent group centre and child group centre rather than weighting each person equally.
 
 Known remaining work:
-- Improve the full global family layout constraints, sibling grouping, parent placement, and partnership-aware ELK layout without regressing the existing ordering and manual positioning.
+- Improve parent placement toward outer sides and investigate partnership-aware ELK constraints without regressing the existing ordering and manual positioning.
 - Add more complete coverage for multiple partnerships and current married-name derivation.
 - Add dedicated tests for manual incompleteness and relationship markers, adoption terminology, and complex ambiguous kinship graphs.
 - Inspect the full dark theme visually across every editor and dialog surface.
@@ -73,3 +73,16 @@ Additional progress after the first green build:
 - Direct adoptive parent and adopted child labels are now distinguished when the recorded direct link is adoptive only.
 - Manual incompleteness styling is covered for parentage and partnership edges.
 - Family ordering now clusters children who share a recorded biological or adoptive parent. Overlapping groups merge into one soft ordering cluster, keeping half siblings together without duplicating people.
+
+
+Latest verified CI checkpoint:
+- Branch commit: `c934ea06437cd38f1f6e090c031cb7a351dc57f7`.
+- GitHub Actions run: `41329675064`.
+- TypeScript check passed.
+- 52 unit tests passed across 9 files.
+- 10 Playwright tests passed and 2 were skipped by the configured project filters.
+- Production build passed.
+- PWA build verification passed.
+- Browser coverage includes dark theme persistence, partial date entry, and manually incomplete relationship markers persisting after reload.
+
+The remaining items listed above are intentionally not marked complete.
