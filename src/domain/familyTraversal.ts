@@ -88,11 +88,28 @@ function layoutScore(rows: Map<number, string[]>, edges: LayoutEdge[], generatio
       a: source.get(edge.parentId)!,
       b: target.get(edge.childId)!,
     })).sort((x, y) => x.a - y.a || x.b - y.b);
-    for (let i = 0; i < ordered.length; i += 1) {
-      span += Math.abs(ordered[i].a - ordered[i].b);
-      for (let j = i + 1; j < ordered.length; j += 1) {
-        if (ordered[i].a !== ordered[j].a && ordered[i].b > ordered[j].b) crossings += 1;
+    const tree = new Array(target.size + 1).fill(0);
+    const add = (value: number) => {
+      for (let index = value + 1; index < tree.length; index += index & -index) tree[index] += 1;
+    };
+    const prefix = (count: number) => {
+      let total = 0;
+      for (let index = count; index > 0; index -= index & -index) total += tree[index];
+      return total;
+    };
+    let seen = 0;
+    for (let start = 0; start < ordered.length;) {
+      let end = start + 1;
+      while (end < ordered.length && ordered[end].a === ordered[start].a) end += 1;
+      for (let index = start; index < end; index += 1) {
+        span += Math.abs(ordered[index].a - ordered[index].b);
+        crossings += seen - prefix(ordered[index].b + 1);
       }
+      for (let index = start; index < end; index += 1) {
+        add(ordered[index].b);
+        seen += 1;
+      }
+      start = end;
     }
   }
   return { crossings, span };
