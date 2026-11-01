@@ -2,7 +2,7 @@
 
 ## Status
 
-Plan drafted on 2026-11-01. Awaiting explicit user approval. No implementation has started. Do not modify the layout implementation until approval.
+Approved on 2026-11-01. The recursive layout rewrite is implemented on branch `request/010-recursive-family-ordering` and is under review in [PR #11](https://github.com/OliverZsuffa/Rooted-FamilyTree/pull/11). The latest code verification passed. The branch is not merged.
 
 ## 1. Audit the current layout boundary
 
