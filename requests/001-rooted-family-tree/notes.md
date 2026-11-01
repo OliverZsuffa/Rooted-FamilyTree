@@ -24,7 +24,7 @@ Oliver approved the implementation plan. The initial functional application is b
 - Derived sibling relationships.
 - ELK automatic layout, generation constrained vertical movement, and persisted manual positions.
 - Partnership junction nodes for shared children.
-- Search, profile panel, undo, redo, and keyboard shortcuts.
+- Search, selected branch highlighting, profile panel, undo, redo, and keyboard shortcuts.
 - IndexedDB autosave.
 - Validated JSON import and full JSON export.
 - PWA manifest, local icon, Workbox service worker, and user prompted app updates.
