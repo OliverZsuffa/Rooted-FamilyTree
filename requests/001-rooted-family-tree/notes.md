@@ -2,25 +2,33 @@
 
 ## Current status
 
-Planning only. The repository was empty when this request was started. A README and request documentation were added; no application source code, dependencies, or deployment workflow have been created.
+Oliver approved the implementation plan. Phase 1 foundation has been added to `request/001-rooted-family-tree`. Automated verification is pending. No deployment or merge has been performed.
 
-## Repository setup
+## Repository
 
 - Repository: OliverZsuffa/Rooted-FamilyTree
 - Default branch: main
-- Request branch: request/001-rooted-family-tree
+- Working branch: request/001-rooted-family-tree
 
-## Checks performed
+## Phase 1 changes
 
-- Confirmed the repository exists and was empty before the initial documentation commit.
-- Reviewed the established request and knowledge-base conventions from Oliver's existing projects.
-- Reviewed the Vite PWA documentation for the manifest, service-worker, and offline support approach.
+- Added React, TypeScript, Vite, Tailwind CSS, Zod, IndexedDB, React Flow, ELK.js, and Lucide dependencies.
+- Added the application entry point and responsive beige, brown, and olive initial shell.
+- Added versioned Zod domain schemas for people, parentage, partnerships, project metadata, and manual layout coordinates.
+- Added IndexedDB project load and save functions.
+- Added a basic project schema test.
+- Added a GitHub Actions workflow for type checking, tests, and production build.
+- Updated the README to reflect implementation status.
 
-## Implementation outcomes
+## Verification
 
-Not started.
+- GitHub file writes completed successfully.
+- GitHub Actions workflow has been added, but no successful run has yet been verified.
+- No local build or browser test has been performed in this environment.
+- PWA, service worker, offline launch, and deployment are not implemented in Phase 1.
 
 ## Remaining work
 
-- Await explicit approval of the implementation plan.
-- After approval, implement the approved scope, run automated checks and production build, verify GitHub Pages deployment, and update this file and reusable knowledge with actual outcomes.
+- Verify the GitHub Actions run and resolve any build or test failures.
+- Complete Phase 1 review.
+- Continue to Phase 2 only after Phase 1 is verified and the work remains within the approved plan.
