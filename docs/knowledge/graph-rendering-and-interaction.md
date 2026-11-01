@@ -32,3 +32,19 @@ Keep relationship edge construction in `src/domain/relationshipEdges.ts` so the 
 ## Verification
 
 Run unit tests, desktop and mobile Playwright tests, production build, and PWA verification. Browser tests should assert that multiple person cards have non-overlapping bounding boxes, relationship edges have valid visible endpoints, the tree survives reload, and mobile dragging changes the card position.
+
+
+## Consolidated partnership and family junctions
+
+- When a partnership's two people exactly match the two recorded biological or adoptive parents of a family group, render the partnership symbol at that group's family junction.
+- Suppress the separate partnership edge only for that exact match. The existing parent-to-junction and junction-to-child edges remain the actual parentage representation.
+- Do not infer parentage from a partnership record. One-parent groups, other parent sets, and partnerships without shared children remain separate.
+- The symbol belongs inside the family junction node, with parent edges entering through its top handle and child edges leaving through its bottom handle.
+- The visual consolidation does not change the ELK layout graph or person positions.
+
+## Relationship finder
+
+- `src/domain/relationshipPath.ts` calculates a shortest path through recorded parentage and partnership links and returns person IDs, relationship IDs, relevant family junction IDs, and ambiguity metadata.
+- The UI uses the existing kinship calculation for relationship wording. Partnership-only and supported in-law paths receive a clear relationship description without adding stored kinship data.
+- The relationship finder is a separate compact panel. It highlights the selected people and connecting path, supports swapping the perspective, and can be cleared or closed.
+- Keep the person details panel free of a large computed Family connections list.
