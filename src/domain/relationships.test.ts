@@ -60,6 +60,24 @@ describe('family generations', () => {
     expect(getSiblings(project, 'b').map((person) => person.id)).toEqual(['c']);
   });
 
+
+  it('places a newly connected parent in the required generation', () => {
+    const project = fixture();
+    project.parentage = [
+      { id: '1', type: 'biological_parent', parentId: 'a', childId: 'b' },
+      { id: '2', type: 'biological_parent', parentId: 'b', childId: 'c' },
+      { id: '3', type: 'adoptive_parent', parentId: 'd', childId: 'c' },
+    ];
+    const result = calculateGenerations(project);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.generations.get('a')).toBe(0);
+      expect(result.generations.get('b')).toBe(1);
+      expect(result.generations.get('d')).toBe(1);
+      expect(result.generations.get('c')).toBe(2);
+    }
+  });
+
   it('rejects duplicate relationships', () => {
     const project = fixture();
     const relation = { id: '1', type: 'biological_parent' as const, parentId: 'a', childId: 'b' };
