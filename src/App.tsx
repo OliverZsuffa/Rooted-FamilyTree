@@ -6,6 +6,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Check, Download, GitFork, LayoutGrid, Moon, Plus, Redo2, Search, Sprout, Sun, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, isDefinitelyBefore, partialDateSchema, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
+import { getPersonNameUpdate } from './domain/personNames';
 import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
@@ -430,7 +431,8 @@ function App() {
     event.preventDefault();
     if (!project) return;
     const first = personFirstName.trim(), middle = personMiddleName.trim(), last = personLastName.trim();
-    if ((!editingPerson && (!first || !last)) || ((first || last) && (!first || !last))) { setAttributeError('Enter both a first name and a last name.'); return; }
+    const nameUpdate = editingPerson ? getPersonNameUpdate(editingPerson, first, middle, last) : null;
+    if ((!editingPerson && !first) || (editingPerson && !nameUpdate?.valid)) { setAttributeError('Enter a first name. Middle and last names are optional.'); return; }
     if (birthDate && !partialDateSchema.safeParse(birthDate).success) { setAttributeError('Enter the birth date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     if (deathDate && !partialDateSchema.safeParse(deathDate).success) { setAttributeError('Enter the death date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     if (birthDate && deathDate && isDefinitelyBefore(deathDate, birthDate)) { setAttributeError('Death date cannot be before birth date.'); return; }
@@ -449,7 +451,7 @@ function App() {
     const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, ...(first && last ? { firstName: first, middleName: middle, lastName: last, name: person.nameHistory.length ? person.name : [first, middle, last].filter(Boolean).join(' ') } : {}), manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
+        ? { ...person, ...nameUpdate?.fields, manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
@@ -764,7 +766,7 @@ function App() {
                 {editingPerson && !editingPerson.firstName && !editingPerson.lastName && <p className="legacy-name-note">Existing full name: {editingPerson.name}. Add first and last names only if you can identify them confidently.</p>}
                 <label>First name<input autoFocus={!editingPerson} required={!editingPerson} value={personFirstName} onChange={(event) => setPersonFirstName(event.target.value)} placeholder="First name" /></label>
                 <label>Middle name<input value={personMiddleName} onChange={(event) => setPersonMiddleName(event.target.value)} placeholder="Optional" /></label>
-                <label>Last name<input required={!editingPerson} value={personLastName} onChange={(event) => setPersonLastName(event.target.value)} placeholder="Last name" /></label>
+                <label>Last name<input value={personLastName} onChange={(event) => setPersonLastName(event.target.value)} placeholder="Last name" /></label>
                 <label className="incomplete-control"><input type="checkbox" checked={manualPersonIncomplete} onChange={(event) => setManualPersonIncomplete(event.target.checked)} /> Mark this person as incomplete</label>
                 <label>Gender
                   <select value={personGender ?? ''} onChange={(event) => setPersonGender((event.target.value || null) as Gender)}>
