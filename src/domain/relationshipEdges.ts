@@ -7,7 +7,7 @@ export function buildRelationshipEdges(
   visibleNodeIds: Iterable<string>,
   selectedId: string | null,
   highlightedIds: Set<string>,
-  positions: Record<string, { x: number; y: number }> = {},
+  _positions: Record<string, { x: number; y: number }> = {},
 ): Edge[] {
   const visibleIds = new Set(visibleNodeIds);
   const result: Edge[] = [];
