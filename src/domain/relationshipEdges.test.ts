@@ -19,7 +19,7 @@ describe('relationship edge construction', () => {
       { id: 'step', type: 'step_parent', parentId: 'd', childId: 'b' },
       { id: 'guardian', type: 'guardian', parentId: 'e', childId: 'c' },
     ];
-    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'a', person2Id: 'd', startDate: null, endDate: null }];
+    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'c', person2Id: 'd', startDate: null, endDate: null }];
     const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e'], null, new Set());
     expect(edges.map((edge) => edge.id).sort()).toEqual(['adopt', 'bio', 'guardian', 'marriage', 'step']);
     expect(edges.find((edge) => edge.id === 'step')?.style).toMatchObject({ strokeDasharray: '5 4' });
