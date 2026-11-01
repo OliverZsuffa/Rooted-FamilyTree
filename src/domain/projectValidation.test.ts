@@ -42,6 +42,12 @@ describe('backup validation', () => {
     expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('missing custom detail') });
   });
 
+  it('rejects a person who died before their birth date', () => {
+    const project = createEmptyProject();
+    project.people = [{ id: 'one', name: 'One', birthDate: '2000-01-01', deathDate: '1999-12-31', attributes: {}, displayAttribute: null }];
+    expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('death date') });
+  });
+
   it('rejects circular ancestry before import', () => {
     const project = createEmptyProject();
     project.people = ['one', 'two'].map((id) => ({ id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }));
