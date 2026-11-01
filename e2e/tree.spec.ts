@@ -205,3 +205,31 @@ test('persists manually incomplete relationship markers', async ({ page }) => {
   await page.reload();
   await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
 });
+
+
+test('creates, edits, and reloads a person with only a first name', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add person' }).click();
+  await page.getByPlaceholder('First name').fill('Onlyfirst');
+  await expect(page.getByPlaceholder('Last name')).not.toHaveAttribute('required', '');
+  await page.getByRole('button', { name: 'Save person' }).click();
+
+  const personNode = page.locator('.react-flow__node-person').filter({ hasText: 'Onlyfirst' });
+  await expect(personNode).toBeVisible();
+  await expect(personNode.locator('.person-card')).toHaveClass(/person-card-incomplete/);
+
+  await personNode.click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByPlaceholder('First name')).toHaveValue('Onlyfirst');
+  await expect(page.getByPlaceholder('Last name')).toHaveValue('');
+  await page.getByRole('button', { name: 'Save person' }).click();
+  await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Onlyfirst' }).locator('.person-card')).toHaveClass(/person-card-incomplete/);
+
+  await page.waitForTimeout(450);
+  await page.reload();
+  const reloaded = page.locator('.react-flow__node-person').filter({ hasText: 'Onlyfirst' });
+  await expect(reloaded).toBeVisible();
+  await expect(reloaded.locator('.person-card')).toHaveClass(/person-card-incomplete/);
+  await reloaded.click();
+  await expect(page.locator('.person-panel h2')).toHaveText('Onlyfirst');
+});
