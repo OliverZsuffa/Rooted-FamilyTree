@@ -25,6 +25,10 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
     return { success: false, error: 'The backup contains duplicate parentage relationships.' };
   }
 
+  if (project.people.some((person) => person.birthDate && person.deathDate && person.deathDate < person.birthDate)) {
+    return { success: false, error: 'A person has a death date before their birth date.' };
+  }
+
   const people = new Set(personIds);
   if (project.people.some((person) => person.displayAttribute && !Object.prototype.hasOwnProperty.call(person.attributes, person.displayAttribute))) {
     return { success: false, error: 'A person card refers to a missing custom detail.' };
