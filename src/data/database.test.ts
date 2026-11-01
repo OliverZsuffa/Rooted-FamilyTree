@@ -12,7 +12,7 @@ describe('local project database', () => {
   it('saves and reloads the complete project', async () => {
     const project = createEmptyProject();
     project.people = [{
-      id: 'person-1', name: 'Ada', birthDate: '1815-12-10', deathDate: null,
+      id: 'person-1', name: 'Ada', gender: null, nameHistory: [], birthDate: '1815-12-10', deathDate: null,
       attributes: { occupation: 'Mathematician', number: 1 }, displayAttribute: 'occupation',
     }];
     await saveProject(project);
