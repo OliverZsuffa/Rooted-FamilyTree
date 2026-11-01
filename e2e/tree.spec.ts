@@ -12,6 +12,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await addPerson(page, 'Ada Example');
   await addPerson(page, 'Ben Example');
   await addPerson(page, 'Cara Example');
+  await addPerson(page, 'Daria Example');
 
   await page.waitForTimeout(500);
   const personNodes = page.locator('.react-flow__node-person');
@@ -38,6 +39,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Daria Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(2);
   await page.waitForTimeout(450);
   await page.reload();
@@ -66,6 +68,11 @@ test('mobile canvas fits the screen and supports dragging a person card', async 
   await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 70, y: y + 30, id: 1 }] });
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect.poll(() => node.evaluate((element) => (element as HTMLElement).style.transform)).not.toBe(before);
+  const moved = await node.evaluate((element) => (element as HTMLElement).style.transform);
+  await page.waitForTimeout(450);
+  await page.reload();
+  const reloadedNode = page.locator('.react-flow__node').filter({ hasText: 'Mobile Person' });
+  await expect.poll(() => reloadedNode.evaluate((element) => (element as HTMLElement).style.transform)).toBe(moved);
   await session.detach();
 });
 
