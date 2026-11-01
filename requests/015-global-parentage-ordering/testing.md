@@ -1,12 +1,22 @@
 # Request 015 testing checklist
 
-## Status
+## Stage 1: Isolated algorithm comparison
 
-Planning only. No application code has been changed and no tests have been run.
+- [ ] Inspect D3 Pedigree Tree source and document its graph and ordering assumptions.
+- [ ] Reproduce its relevant parent and child position heuristic in an isolated prototype.
+- [ ] Implement a constrained layered ordering prototype using downward and upward sweeps.
+- [ ] Compare the current algorithm and candidate algorithms on identical fixtures.
+- [ ] Test a hybrid only if evidence suggests it may improve results.
+- [ ] Record crossing counts between adjacent generations.
+- [ ] Record exact-parent-set sibling block integrity.
+- [ ] Record shared-person uniqueness and branch coherence.
+- [ ] Record deterministic behaviour under equivalent input permutations.
+- [ ] Record runtime and evaluation counts.
+- [ ] Recommend an algorithm based on the results, not intuition alone.
 
-## Structural ordering
+## Structural fixtures
 
-- [ ] Corrected CA / AB / BA parentage fixture uses both parents for every child.
+- [ ] Corrected CA / AB / BA fixture uses both parents for every child.
 - [ ] AB and BA remain a contiguous exact-parent-set sibling block.
 - [ ] CA remains in its distinct exact-parent-set group.
 - [ ] Shared people appear once even when they participate in multiple family units.
@@ -25,9 +35,9 @@ Planning only. No application code has been changed and no tests have been run.
 - [ ] Repeated runs are deterministic.
 - [ ] Equivalent input permutations do not cause arbitrary reordering.
 - [ ] Optimisation has bounded runtime and a valid best-so-far fallback.
-- [ ] Comparison fixtures demonstrate improvement over the current algorithm.
+- [ ] Comparison fixtures demonstrate the selected approach's strengths and limitations against the current algorithm.
 
-## Geometry and regressions
+## Geometry and regressions after implementation
 
 - [ ] Cards do not overlap.
 - [ ] Junctions do not overlap cards.
@@ -38,7 +48,7 @@ Planning only. No application code has been changed and no tests have been run.
 - [ ] Incompleteness and dark mode remain unchanged.
 - [ ] Import/export remains unchanged.
 
-## Verification
+## Verification after implementation
 
 - [ ] TypeScript type checking.
 - [ ] Full unit test suite.
@@ -51,4 +61,4 @@ Planning only. No application code has been changed and no tests have been run.
 
 ## Results
 
-To be completed after implementation.
+To be completed during the relevant stage. Research and prototype results must be recorded before application implementation is proposed.
