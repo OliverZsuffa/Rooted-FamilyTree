@@ -77,6 +77,15 @@ describe('kinship labels', () => {
     expect(getKinshipLabel(project, 'aunt', 'child')).toBe('stepchild');
   });
 
+  it('identifies direct adoptive parent and child relationships', () => {
+    const project = fixture();
+    project.people.find((person) => person.id === 'mother')!.gender = 'female';
+    project.people.find((person) => person.id === 'child')!.gender = 'male';
+    project.parentage = [{ id: 'adoption', type: 'adoptive_parent', parentId: 'mother', childId: 'child' }];
+    expect(getKinshipLabel(project, 'child', 'mother')).toBe('adoptive mother');
+    expect(getKinshipLabel(project, 'mother', 'child')).toBe('adopted son');
+  });
+
   it('does not label unrelated people', () => {
     expect(getKinshipLabel(fixture(), 'child', 'unrelated')).toBeNull();
   });

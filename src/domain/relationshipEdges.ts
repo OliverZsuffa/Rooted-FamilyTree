@@ -73,7 +73,7 @@ export function buildRelationshipEdges(
       label: partnership.type === 'marriage' ? '♥' : '♡',
       labelStyle: { fill: partnership.manualIncomplete ? 'var(--edge-incomplete)' : 'var(--edge-partnership)', fontSize: 13 },
       labelBgStyle: { fill: 'var(--paper)', fillOpacity: 0.95 },
-      style: { stroke: partnership.manualIncomplete ? '#b45b4e' : '#78805a', strokeWidth: 1.7 },
+      style: { stroke: partnership.manualIncomplete ? 'var(--edge-incomplete)' : 'var(--edge-partnership)', strokeWidth: 1.7 },
     });
   }
 

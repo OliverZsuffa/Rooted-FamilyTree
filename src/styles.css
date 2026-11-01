@@ -291,3 +291,6 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 .legacy-name-note { margin: 0; color: var(--brown-soft); font-size: 11px; line-height: 1.5; }
  :root[data-theme="dark"] .person-card-incomplete,
 :root[data-theme="dark"] .family-junction-incomplete { border-color: var(--edge-incomplete); background: #49302b; color: #f0b2a5; }
+
+:root[data-theme="dark"] .relationship-heading,
+:root[data-theme="dark"] .person-card-detail { color: var(--olive); }

@@ -90,12 +90,24 @@ export function getKinshipLabel(project: Project, subjectId: string, relativeId:
   const relativeAsAncestor = subjectAncestors.get(relativeId);
   const subjectAsAncestor = relativeAncestors.get(subjectId);
   if (relativeAsAncestor !== undefined) {
-    if (relativeAsAncestor === 1) return gendered(relative, 'mother', 'father', 'parent');
+    if (relativeAsAncestor === 1) {
+      const directLinks = project.parentage.filter((relation) => relation.parentId === relativeId && relation.childId === subjectId);
+      if (directLinks.some((relation) => relation.type === 'adoptive_parent') && !directLinks.some((relation) => relation.type === 'biological_parent')) {
+        return gendered(relative, 'adoptive mother', 'adoptive father', 'adoptive parent');
+      }
+      return gendered(relative, 'mother', 'father', 'parent');
+    }
     if (relativeAsAncestor === 2) return gendered(relative, 'grandmother', 'grandfather', 'grandparent');
     return gendered(relative, 'great-'.repeat(relativeAsAncestor - 2) + 'grandmother', 'great-'.repeat(relativeAsAncestor - 2) + 'grandfather', 'great-'.repeat(relativeAsAncestor - 2) + 'grandparent');
   }
   if (subjectAsAncestor !== undefined) {
-    if (subjectAsAncestor === 1) return gendered(relative, 'daughter', 'son', 'child');
+    if (subjectAsAncestor === 1) {
+      const directLinks = project.parentage.filter((relation) => relation.parentId === subjectId && relation.childId === relativeId);
+      if (directLinks.some((relation) => relation.type === 'adoptive_parent') && !directLinks.some((relation) => relation.type === 'biological_parent')) {
+        return gendered(relative, 'adopted daughter', 'adopted son', 'adopted child');
+      }
+      return gendered(relative, 'daughter', 'son', 'child');
+    }
     if (subjectAsAncestor === 2) return gendered(relative, 'granddaughter', 'grandson', 'grandchild');
     return gendered(relative, 'great-'.repeat(subjectAsAncestor - 2) + 'granddaughter', 'great-'.repeat(subjectAsAncestor - 2) + 'grandson', 'great-'.repeat(subjectAsAncestor - 2) + 'grandchild');
   }

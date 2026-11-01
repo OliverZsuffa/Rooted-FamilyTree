@@ -189,3 +189,18 @@ test('persists the theme choice and supports partial precision dates', async ({ 
   await page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).click();
   await expect(page.locator('.person-panel .panel-dates')).toContainText('1984-03');
 });
+
+
+test('persists manually incomplete relationship markers', async ({ page }) => {
+  await page.goto('/');
+  await addPerson(page, 'Marked Parent');
+  await addPerson(page, 'Marked Child');
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Marked Parent' }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Connect to').selectOption({ label: 'Marked Child' });
+  await page.getByRole('checkbox', { name: 'Mark this relationship as incomplete' }).check();
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+  await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
+  await page.reload();
+  await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
+});
