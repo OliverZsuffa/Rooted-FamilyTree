@@ -17,7 +17,7 @@ describe('family generations', () => {
     ];
     const result = calculateGenerations(project);
     expect(result.ok).toBe(true);
-    if (result.ok) expect([...result.generations]).toEqual([['a', 0], ['b', 0], ['c', 1], ['d', 2]]);
+    if (result.ok) expect(Object.fromEntries(result.generations)).toEqual({ a: 0, b: 0, c: 1, d: 2 });
   });
 
   it('does not let step-parent or guardian relationships change generations', () => {
