@@ -5,61 +5,49 @@ import { buildRelationshipEdges } from './relationshipEdges';
 function fixture(): Project {
   const project = createEmptyProject();
   project.people = ['a', 'b', 'c', 'd', 'e'].map((id) => ({
-    id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+    id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
   }));
   return project;
 }
 
 describe('relationship edge construction', () => {
-  it('renders every supported parentage type and an independent partnership', () => {
-    const project = fixture();
-    project.parentage = [
-      { id: 'bio', type: 'biological_parent', parentId: 'a', childId: 'b' },
-      { id: 'adopt', type: 'adoptive_parent', parentId: 'a', childId: 'c' },
-      { id: 'step', type: 'step_parent', parentId: 'd', childId: 'b' },
-      { id: 'guardian', type: 'guardian', parentId: 'e', childId: 'c' },
-    ];
-    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'c', person2Id: 'd', startDate: null, endDate: null }];
-    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e'], null, new Set());
-    expect(edges.map((edge) => edge.id).sort()).toEqual(['adopt', 'bio', 'guardian', 'marriage', 'step']);
-    expect(edges.find((edge) => edge.id === 'step')?.style).toMatchObject({ strokeDasharray: '5 4' });
-    expect(edges.find((edge) => edge.id === 'guardian')?.style).toMatchObject({ strokeDasharray: '5 4' });
-  });
-
-  it('routes shared children through the correct partnership junction', () => {
+  it('routes explicit parent sets through family junctions and partnerships separately', () => {
     const project = fixture();
     project.parentage = [
       { id: 'a-child', type: 'biological_parent', parentId: 'a', childId: 'c' },
-      { id: 'b-child', type: 'biological_parent', parentId: 'b', childId: 'c' },
+      { id: 'b-child', type: 'adoptive_parent', parentId: 'b', childId: 'c' },
+      { id: 'step', type: 'step_parent', parentId: 'd', childId: 'c' },
+      { id: 'guardian', type: 'guardian', parentId: 'e', childId: 'c' },
     ];
-    project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null }];
-    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'junction:ab'], null, new Set());
-    expect(edges.map((edge) => edge.id).sort()).toEqual(['ab:child:c', 'ab:first', 'ab:second']);
-    expect(edges.every((edge) => edge.source !== 'a-child' && edge.source !== 'b-child')).toBe(true);
+    project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [] }];
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e', 'family:a|b'], null, new Set(), { a: { x: 0, y: 0 }, b: { x: 240, y: 0 } });
+    expect(edges.map((edge) => edge.id).sort()).toEqual(['ab', 'family:a|b:child:c', 'family:a|b:parent:a', 'family:a|b:parent:b', 'guardian', 'step']);
+    expect(edges.find((edge) => edge.id === 'ab')).toMatchObject({ sourceHandle: 'partnership-out-right', targetHandle: 'partnership-in-left', type: 'bezier' });
   });
 
-  it('keeps multiple partnerships and their children separate', () => {
+  it('does not infer children from a marriage', () => {
+    const project = fixture();
+    project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [] }];
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'c'], null, new Set());
+    expect(edges.map((edge) => edge.id)).toEqual(['ab']);
+  });
+
+  it('keeps family groups separate for multiple partnerships', () => {
     const project = fixture();
     project.parentage = [
-      { id: 'a-x', type: 'biological_parent', parentId: 'a', childId: 'd' },
-      { id: 'b-x', type: 'biological_parent', parentId: 'b', childId: 'd' },
-      { id: 'a-y', type: 'biological_parent', parentId: 'a', childId: 'e' },
-      { id: 'c-y', type: 'biological_parent', parentId: 'c', childId: 'e' },
+      { id: 'a-d', type: 'biological_parent', parentId: 'a', childId: 'd' },
+      { id: 'b-d', type: 'biological_parent', parentId: 'b', childId: 'd' },
+      { id: 'a-e', type: 'biological_parent', parentId: 'a', childId: 'e' },
+      { id: 'c-e', type: 'biological_parent', parentId: 'c', childId: 'e' },
     ];
-    project.partnerships = [
-      { id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null },
-      { id: 'ac', type: 'partnership', person1Id: 'a', person2Id: 'c', startDate: null, endDate: null },
-    ];
-    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e', 'junction:ab', 'junction:ac'], null, new Set());
-    expect(edges).toHaveLength(6);
-    expect(edges.some((edge) => edge.id === 'ab:child:d' && edge.target === 'd')).toBe(true);
-    expect(edges.some((edge) => edge.id === 'ac:child:e' && edge.target === 'e')).toBe(true);
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e', 'family:a|b', 'family:a|c'], null, new Set());
+    expect(edges.some((edge) => edge.id === 'family:a|b:child:d')).toBe(true);
+    expect(edges.some((edge) => edge.id === 'family:a|c:child:e')).toBe(true);
   });
 
-  it('does not emit edges with endpoints hidden by search', () => {
+  it('does not emit connectors with hidden endpoints', () => {
     const project = fixture();
     project.parentage = [{ id: 'parent-child', type: 'biological_parent', parentId: 'a', childId: 'b' }];
-    const edges = buildRelationshipEdges(project, ['a'], null, new Set());
-    expect(edges).toEqual([]);
+    expect(buildRelationshipEdges(project, ['a'], null, new Set())).toEqual([]);
   });
 });

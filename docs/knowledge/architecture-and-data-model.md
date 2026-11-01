@@ -11,12 +11,12 @@
 
 ## Domain entities
 
-- People have a name, optional birth and death dates, flexible custom attributes, and an optional selected card attribute.
+- People have a name, optional gender, dated name history, optional birth and death dates, flexible custom attributes, and an optional selected card attribute.
 - Parentage records distinguish biological, adoptive, step-parent, and guardian relationships.
-- Partnership records distinguish marriage and non-marital partnership, with optional start and end dates.
+- Partnership records distinguish marriage and non-marital partnership, with optional start and end dates. Marriage records can preserve explicitly entered name changes for either or both partners.
 - Project metadata stores the schema version and manual layout coordinates.
 
-People and relationships are separate records. Siblings are derived from shared biological or adoptive parents.
+People and relationships are separate records. Siblings and family groups are derived from shared biological or adoptive parents. Kinship labels are calculated from the relationship graph and the optional gender field. They are never stored as independent facts.
 
 ## Generation rules
 
@@ -28,10 +28,9 @@ Generation calculation works per connected ancestry component. Relative offsets 
 
 The visual graph is derived from domain data. ELK.js calculates default positions. Generation rows determine the allowed vertical band. Users can drag people horizontally and make small vertical adjustments without changing their calculated generation. Manual coordinates are stored separately from relationships and survive ordinary edits.
 
-Where two partnered people are both connected as parents to a child, the canvas renders a shared partnership junction. Other parentage links remain direct edges. A partnership without shared children is rendered as a line with a small symbol.
+Each distinct set of explicitly recorded biological and adoptive parents defines a family group. An invisible family junction connects those parents to all children with that exact parent set. Children with different parent sets remain in separate groups, even if they share one parent. A person node is never duplicated when they have children in multiple family groups. Partnership lines are separate curved side-to-side connectors and never imply parentage. Step-parent and guardian links remain separate dashed relationships.
 
 ## Current implementation limitations
 
-- Partnership junctions are visualized, but the layout algorithm does not yet optimize junction positions as part of the ELK graph.
 - Complex mobile trees still need real-device interaction testing.
-- Automated domain tests exist; persistence and full browser interaction tests remain to be added.
+- Kinship labels use the closest supported ancestry path. Complex pedigree collapse and equally close conflicting paths should be reviewed carefully rather than treated as a complete genealogy standard.

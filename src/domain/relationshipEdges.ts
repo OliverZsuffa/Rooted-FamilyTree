@@ -1,58 +1,44 @@
 import type { Edge } from '@xyflow/react';
 import type { Project } from './schema';
+import { getFamilyGroups } from './familyGroups';
 
 export function buildRelationshipEdges(
   project: Project,
   visibleNodeIds: Iterable<string>,
   selectedId: string | null,
   highlightedIds: Set<string>,
+  positions: Record<string, { x: number; y: number }> = {},
 ): Edge[] {
   const visibleIds = new Set(visibleNodeIds);
   const result: Edge[] = [];
-  const consumedParentage = new Set<string>();
 
-  for (const partnership of project.partnerships) {
-    const sharedPairs = project.parentage.flatMap((first) => {
-      if (first.parentId !== partnership.person1Id) return [];
-      const second = project.parentage.find((other) =>
-        other.childId === first.childId && other.parentId === partnership.person2Id);
-      return second ? [{ first, second }] : [];
-    });
-    const junctionId = 'junction:' + partnership.id;
-    const visiblePairs = sharedPairs.filter(({ first }) => visibleIds.has(first.childId));
-
-    if (visiblePairs.length && visibleIds.has(junctionId)
-      && visibleIds.has(partnership.person1Id) && visibleIds.has(partnership.person2Id)) {
-      result.push(
-        { id: partnership.id + ':first', source: partnership.person1Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-        { id: partnership.id + ':second', source: partnership.person2Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-      );
-      for (const { first, second } of visiblePairs) {
-        consumedParentage.add(first.id);
-        consumedParentage.add(second.id);
-        result.push({
-          id: partnership.id + ':child:' + first.childId,
-          source: junctionId,
-          target: first.childId,
-          type: 'smoothstep',
-          style: { stroke: '#8b765e', strokeWidth: 1.5 },
-        });
-      }
-    } else if (!visiblePairs.length) {
+  for (const group of getFamilyGroups(project)) {
+    if (!visibleIds.has(group.id)) continue;
+    for (const parentId of group.parentIds) {
+      if (!visibleIds.has(parentId)) continue;
       result.push({
-        id: partnership.id,
-        source: partnership.person1Id,
-        target: partnership.person2Id,
-        type: 'straight',
-        label: partnership.type === 'marriage' ? '♥' : '♡',
-        labelStyle: { fill: '#78805a', fontSize: 13 },
-        style: { stroke: '#78805a', strokeWidth: 1.5 },
+        id: group.id + ':parent:' + parentId,
+        source: parentId,
+        target: group.id,
+        type: 'smoothstep',
+        style: { stroke: '#8b765e', strokeWidth: 1.5 },
+      });
+    }
+    for (const childId of group.childIds) {
+      if (!visibleIds.has(childId)) continue;
+      result.push({
+        id: group.id + ':child:' + childId,
+        source: group.id,
+        target: childId,
+        type: 'smoothstep',
+        style: { stroke: '#8b765e', strokeWidth: 1.5 },
       });
     }
   }
 
   for (const relation of project.parentage) {
-    if (consumedParentage.has(relation.id)) continue;
+    if (relation.type === 'biological_parent' || relation.type === 'adoptive_parent') continue;
+    if (!visibleIds.has(relation.parentId) || !visibleIds.has(relation.childId)) continue;
     result.push({
       id: relation.id,
       source: relation.parentId,
@@ -60,20 +46,34 @@ export function buildRelationshipEdges(
       type: 'smoothstep',
       animated: false,
       style: {
-        stroke: relation.type === 'biological_parent' ? '#8b765e' : '#a99a83',
+        stroke: '#a99a83',
         strokeWidth: 1.5,
-        strokeDasharray: relation.type === 'guardian' || relation.type === 'step_parent' ? '5 4' : undefined,
+        strokeDasharray: '5 4',
       },
     });
   }
 
-  return result
-    .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
-    .map((edge) => ({
-      ...edge,
-      style: {
-        ...edge.style,
-        opacity: !selectedId || (highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15,
-      },
-    }));
+  for (const partnership of project.partnerships) {
+    if (!visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
+    result.push({
+      id: partnership.id,
+      source: partnership.person1Id,
+      target: partnership.person2Id,
+      sourceHandle: (positions[partnership.person1Id]?.x ?? 0) <= (positions[partnership.person2Id]?.x ?? 0) ? 'partnership-out-right' : 'partnership-out-left',
+      targetHandle: (positions[partnership.person1Id]?.x ?? 0) <= (positions[partnership.person2Id]?.x ?? 0) ? 'partnership-in-left' : 'partnership-in-right',
+      type: 'bezier',
+      label: partnership.type === 'marriage' ? '♥' : '♡',
+      labelStyle: { fill: '#78805a', fontSize: 13 },
+      labelBgStyle: { fill: '#f2eee4', fillOpacity: 0.95 },
+      style: { stroke: '#78805a', strokeWidth: 1.7 },
+    });
+  }
+
+  return result.map((edge) => ({
+    ...edge,
+    style: {
+      ...edge.style,
+      opacity: !selectedId || (edge.source.startsWith('family:') ? highlightedIds.has(edge.target) : edge.target.startsWith('family:') ? highlightedIds.has(edge.source) : highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15,
+    },
+  }));
 }

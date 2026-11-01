@@ -5,9 +5,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
-import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
+import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
+import { getKinshipRows } from './domain/kinship';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
+import { getFamilyGroups } from './domain/familyGroups';
 import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
@@ -21,7 +23,7 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
+type JunctionFlowNode = Node<{ dimmed: boolean }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -33,6 +35,10 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
     >
       <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} id="partnership-in-left" />
+      <Handle type="source" position={Position.Left} id="partnership-out-left" />
+      <Handle type="target" position={Position.Right} id="partnership-in-right" />
+      <Handle type="source" position={Position.Right} id="partnership-out-right" />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
@@ -42,14 +48,13 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'partnership-junction partnership-junction-dimmed' : 'partnership-junction'} aria-label="Partnership">
+    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded parent group">
       <Handle type="target" position={Position.Top} />
-      <span>{data.symbol}</span>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
-const nodeTypes = { person: PersonCard, junction: JunctionCard };
+const nodeTypes = { person: PersonCard, family: JunctionCard };
 const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'biological_parent', label: 'Biological parent' },
   { value: 'adoptive_parent', label: 'Adoptive parent' },
@@ -86,6 +91,7 @@ function App() {
   const [dialog, setDialog] = useState<'person' | 'relationship' | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [personName, setPersonName] = useState('');
+  const [personGender, setPersonGender] = useState<Gender>(null);
   const [birthDate, setBirthDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
   const [attributeRows, setAttributeRows] = useState<AttributeRow[]>([]);
@@ -94,6 +100,10 @@ function App() {
   const [relationType, setRelationType] = useState<ParentageType | 'marriage' | 'partnership'>('biological_parent');
   const [partnershipStartDate, setPartnershipStartDate] = useState('');
   const [partnershipEndDate, setPartnershipEndDate] = useState('');
+  const [nameChangeChoice, setNameChangeChoice] = useState<'none' | 'first' | 'second' | 'both'>('none');
+  const [firstNewName, setFirstNewName] = useState('');
+  const [secondNewName, setSecondNewName] = useState('');
+  const [nameChangeDate, setNameChangeDate] = useState('');
   const [relationPersonId, setRelationPersonId] = useState('');
   const [newRelativeName, setNewRelativeName] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
@@ -238,7 +248,7 @@ function App() {
   }, [project?.people, project?.parentage, project?.partnerships]);
 
   useEffect(() => {
-    if (selectedId && search && !project?.people.some((person) => person.id === selectedId && person.name.toLowerCase().includes(search.toLowerCase()))) setSelectedId(null);
+    if (selectedId && search && !project?.people.some((person) => person.id === selectedId && (person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase()) || entry.newName.toLowerCase().includes(search.toLowerCase()))))) setSelectedId(null);
   }, [selectedId, search, project?.people]);
 
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
@@ -282,7 +292,7 @@ function App() {
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
-    const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()));
+    const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase()) || entry.newName.toLowerCase().includes(search.toLowerCase())));
     const visibleIds = new Set(visiblePeople.map((person) => person.id));
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
       id: person.id, type: 'person',
@@ -293,20 +303,26 @@ function App() {
         dimmed: !!selectedId && !highlightedIds.has(person.id),
       },
     }));
-    const junctionNodes: JunctionFlowNode[] = [];
-    for (const partnership of project.partnerships) {
-      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
-        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
-      if (!sharedChildren.some((child) => visibleIds.has(child.childId)) || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
-      const first = project.layout.manualPositions[partnership.person1Id] ?? automatic[partnership.person1Id] ?? { x: 0, y: 0 };
-      const second = project.layout.manualPositions[partnership.person2Id] ?? automatic[partnership.person2Id] ?? { x: 0, y: 0 };
-      junctionNodes.push({
-        id: 'junction:' + partnership.id, type: 'junction',
-        position: { x: (first.x + second.x) / 2 + 76, y: (first.y + second.y) / 2 + 95 },
-        data: { symbol: partnership.type === 'marriage' ? '♥' : '♡', dimmed: !!selectedId && !highlightedIds.has(partnership.person1Id) && !highlightedIds.has(partnership.person2Id) },
-        draggable: false, selectable: false,
+    const positionsByPerson = new Map(personNodes.map((node) => [node.id, node.position]));
+    const junctionNodes: JunctionFlowNode[] = getFamilyGroups(project)
+      .filter((group) => group.parentIds.every((id) => visibleIds.has(id)) && group.childIds.some((id) => visibleIds.has(id)))
+      .map((group) => {
+        const parents = group.parentIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
+        const children = group.childIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
+        const points = [...parents, ...children];
+        const position = parents.length && children.length ? {
+          x: points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9,
+          y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
+        } : automatic[group.id] ?? { x: 0, y: 0 };
+        return {
+          id: group.id,
+          type: 'family',
+          position,
+          data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
+          draggable: false,
+          selectable: false,
+        };
       });
-    }
     return [...personNodes, ...junctionNodes];
   }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
   useEffect(() => {
@@ -315,7 +331,7 @@ function App() {
 
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
   }, [project, nodes, selectedId, highlightedIds]);
 
   const exportProject = () => {
@@ -351,6 +367,7 @@ function App() {
   const openPerson = (person?: Person) => {
     setEditingPerson(person ?? null);
     setPersonName(person?.name ?? '');
+    setPersonGender(person?.gender ?? null);
     setBirthDate(person?.birthDate ?? '');
     setDeathDate(person?.deathDate ?? '');
     setAttributeRows(person ? Object.entries(person.attributes).map(([key, value]) => ({ key, value: value === null ? '' : String(value), type: typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'text' })) : []);
@@ -378,11 +395,11 @@ function App() {
     const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
+        ? { ...person, name: personName.trim(), gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
-      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
+      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), gender: personGender, nameHistory: [], birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
       commitProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
@@ -401,7 +418,7 @@ function App() {
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationPersonId === '__new__' && !newRelativeName.trim()) { setRelationError('Enter the new person’s name.'); return; }
     const newRelative = relationPersonId === '__new__'
-      ? { id: crypto.randomUUID(), name: newRelativeName.trim(), birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }
+      ? { id: crypto.randomUUID(), name: newRelativeName.trim(), gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }
       : null;
     const otherPersonId = newRelative?.id ?? relationPersonId;
     const baseProject = newRelative ? { ...project, people: [...project.people, newRelative] } : project;
@@ -410,15 +427,43 @@ function App() {
         setRelationError('The end date cannot be before the start date.');
         return;
       }
+      const partnershipId = editingRelation?.kind === 'partnership' ? editingRelation.id : crypto.randomUUID();
+      const existingPartnership = baseProject.partnerships.find((item) => item.id === partnershipId);
+      const newNameChanges = [...(existingPartnership?.nameChanges ?? [])];
+      const nameHistoryByPerson = new Map(baseProject.people.map((person) => [person.id, [...person.nameHistory]]));
+      const requestedChanges = [
+        ...(nameChangeChoice === 'first' || nameChangeChoice === 'both' ? [{ personId: selectedPerson.id, newName: firstNewName.trim() }] : []),
+        ...(nameChangeChoice === 'second' || nameChangeChoice === 'both' ? [{ personId: otherPersonId, newName: secondNewName.trim() }] : []),
+      ];
+      if (relationType === 'marriage') {
+        for (const change of requestedChanges) {
+          const person = baseProject.people.find((item) => item.id === change.personId);
+          if (!person || !change.newName) { setRelationError('Enter the new full name for each person changing their name.'); return; }
+          if (person.name !== change.newName) {
+            const effectiveDate = nameChangeDate || partnershipStartDate || null;
+            newNameChanges.push({ personId: person.id, previousName: person.name, newName: change.newName, effectiveDate });
+            nameHistoryByPerson.set(person.id, [...(nameHistoryByPerson.get(person.id) ?? []), {
+              id: crypto.randomUUID(), previousName: person.name, newName: change.newName, effectiveDate, partnershipId,
+            }]);
+          }
+        }
+      }
+      const peopleWithNames = baseProject.people.map((person) => {
+        const change = requestedChanges.find((item) => item.personId === person.id);
+        return change?.newName && change.newName !== person.name
+          ? { ...person, name: change.newName, nameHistory: nameHistoryByPerson.get(person.id) ?? person.nameHistory }
+          : person;
+      });
       const partnership = {
-        id: editingRelation?.kind === 'partnership' ? editingRelation.id : crypto.randomUUID(),
+        id: partnershipId,
         type: relationType, person1Id: selectedPerson.id, person2Id: otherPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
+        nameChanges: newNameChanges,
       };
-      const partnerships = editingRelation?.kind === 'partnership'
-        ? baseProject.partnerships.map((item) => item.id === editingRelation.id ? partnership : item)
+      const partnerships = existingPartnership
+        ? baseProject.partnerships.map((item) => item.id === partnershipId ? partnership : item)
         : [...baseProject.partnerships, partnership];
-      commitProject({ ...baseProject, partnerships });
+      commitProject({ ...baseProject, people: peopleWithNames, partnerships });
       setDialog(null);
       setEditingRelation(null);
       setRelationError('');
@@ -453,12 +498,19 @@ function App() {
   };
 
   const editPartnership = (relation: Project['partnerships'][number]) => {
-    if (!selectedPerson) return;
+    if (!selectedPerson || !project) return;
     setEditingRelation({ id: relation.id, kind: 'partnership' });
     setRelationType(relation.type);
     setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
     setPartnershipStartDate(relation.startDate ?? '');
     setPartnershipEndDate(relation.endDate ?? '');
+    const otherId = relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id;
+    const firstChange = relation.nameChanges.find((item) => item.personId === selectedPerson.id);
+    const secondChange = relation.nameChanges.find((item) => item.personId === otherId);
+    setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
+    setFirstNewName(firstChange ? selectedPerson.name : '');
+    setSecondNewName(secondChange ? (project.people.find((person) => person.id === otherId)?.name ?? '') : '');
+    setNameChangeDate(firstChange?.effectiveDate ?? secondChange?.effectiveDate ?? '');
     setRelationError('');
     setDialog('relationship');
   };
@@ -592,6 +644,25 @@ function App() {
               <h2>{selectedPerson.name || 'Unnamed person'}</h2>
               <p className="panel-dates">{selectedPerson.birthDate || 'Birth date unknown'}{selectedPerson.deathDate ? ` · ${selectedPerson.deathDate}` : ''}</p>
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
+              {getKinshipRows(project, selectedPerson.id).length > 0 && (
+                <div className="relationship-list">
+                  <span className="relationship-heading">Family connections</span>
+                  {getKinshipRows(project, selectedPerson.id).map(({ person, label }) => (
+                    <div className="relationship-row" key={person.id}><span>{person.name} · {label}</span></div>
+                  ))}
+                </div>
+              )}
+              {selectedPerson.nameHistory.length > 0 && (
+                <div className="relationship-list">
+                  <span className="relationship-heading">Previous names</span>
+                  {selectedPerson.nameHistory.map((entry) => {
+                    const marriage = project.partnerships.find((item) => item.id === entry.partnershipId);
+                    const otherId = marriage ? (marriage.person1Id === selectedPerson.id ? marriage.person2Id : marriage.person1Id) : null;
+                    const otherName = otherId ? project.people.find((person) => person.id === otherId)?.name : null;
+                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{entry.effectiveDate ? ' · ' + entry.effectiveDate : ''}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
+                  })}
+                </div>
+              )}
               {Object.entries(selectedPerson.attributes).length > 0 && <div className="person-details">{Object.entries(selectedPerson.attributes).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value === null ? 'Not set' : String(value)}</strong></div>)}</div>}
               <div className="relationship-list">
                 <span className="relationship-heading">Relationships</span>
@@ -610,7 +681,7 @@ function App() {
               </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setNameChangeDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -629,6 +700,11 @@ function App() {
                 <p className="eyebrow">{editingPerson ? 'PERSON DETAILS' : 'A NEW BRANCH'}</p>
                 <h2 id="dialog-title">{editingPerson ? 'Edit person' : 'Add a person'}</h2>
                 <label>Name<input autoFocus required value={personName} onChange={(event) => setPersonName(event.target.value)} placeholder="Full name" /></label>
+                <label>Gender
+                  <select value={personGender ?? ''} onChange={(event) => setPersonGender((event.target.value || null) as Gender)}>
+                    <option value="">Not specified</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Nonbinary</option>
+                  </select>
+                </label>
                 <div className="date-fields">
                   <label>Born<input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
                   <label>Died<input type="date" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
@@ -666,10 +742,25 @@ function App() {
                   </select>
                 </label>
                 {relationType === 'marriage' || relationType === 'partnership' ? (
-                  <div className="date-fields">
-                    <label>Started<input type="date" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
-                    <label>Ended<input type="date" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
-                  </div>
+                  <>
+                    <div className="date-fields">
+                      <label>Started<input type="date" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
+                      <label>Ended<input type="date" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
+                    </div>
+                    {relationType === 'marriage' && (
+                      <div className="name-change-editor">
+                        <span className="attribute-heading">Optional name changes</span>
+                        <label>Who changes their name?
+                          <select value={nameChangeChoice} onChange={(event) => setNameChangeChoice(event.target.value as typeof nameChangeChoice)}>
+                            <option value="none">Neither person</option><option value="first">This person</option><option value="second">The other person</option><option value="both">Both people</option>
+                          </select>
+                        </label>
+                        {(nameChangeChoice === 'first' || nameChangeChoice === 'both') && <label>New full name for {selectedPerson?.name}<input value={firstNewName} onChange={(event) => setFirstNewName(event.target.value)} placeholder="Enter full name" /></label>}
+                        {(nameChangeChoice === 'second' || nameChangeChoice === 'both') && <label>New full name for {project.people.find((person) => person.id === relationPersonId)?.name ?? 'the other person'}<input value={secondNewName} onChange={(event) => setSecondNewName(event.target.value)} placeholder="Enter full name" /></label>}
+                        {nameChangeChoice !== 'none' && <label>Effective date<input type="date" value={nameChangeDate} onChange={(event) => setNameChangeDate(event.target.value)} /></label>}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <label>Direction
                     <select value={relationDirection} onChange={(event) => setRelationDirection(event.target.value as 'parent' | 'child')}>

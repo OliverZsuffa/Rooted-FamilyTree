@@ -8,7 +8,7 @@ When changing the shell or footer layout, verify the canvas bounding box in a re
 
 ## Automatic positions
 
-- `createFallbackPositions` must return a position for every person, including disconnected people.
+- `createFallbackPositions` must return a position for every person, including disconnected people, and a derived position for every family junction.
 - Automatic layout results are keyed to the project ID, person IDs, and parentage records. Never reuse a position map from a different tree.
 - ELK can return coincident horizontal coordinates for disconnected nodes. Resolve collisions within each generation using at least the person card width plus the desired gap.
 - Keep a complete fallback map and merge ELK output into it. Missing ELK nodes must never default to the same origin.
@@ -16,7 +16,7 @@ When changing the shell or footer layout, verify the canvas bounding box in a re
 
 ## Relationship edges
 
-Keep relationship edge construction in `src/domain/relationshipEdges.ts` so the graph can be tested without mounting the UI. Test every parentage type, independent partnerships, partnership junctions with shared children, multiple partnerships, and filtering of hidden endpoints.
+Keep relationship edge construction in `src/domain/relationshipEdges.ts` so the graph can be tested without mounting the UI. Biological and adoptive parentage routes through family junctions derived from exact parent sets. Step-parent and guardian links remain direct dashed edges. Partnerships use side handles and curved connectors independently of family junctions. Test multiple family groups, one-parent groups, shared children, multiple partnerships, and filtering of hidden endpoints.
 
 ## Touch interaction
 
