@@ -47,3 +47,8 @@ Local centring and sibling clustering are useful, but they are not sufficient on
 ## Issue
 
 Tracked in [GitHub issue #8](https://github.com/OliverZsuffa/Rooted-FamilyTree/issues/8).
+
+
+## Implementation status
+
+Approved and implemented in PR #8. Automated CI verification passed. The actual populated family tree still needs visual review. Merge to `main` requires separate explicit approval.
