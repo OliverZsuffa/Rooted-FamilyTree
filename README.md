@@ -12,6 +12,16 @@ Rooted is designed as an interactive family history book: a warm paper-inspired 
 - Local-first data storage with explicit JSON import and export.
 - Relationship data is the source of truth; canvas layout is only a visualization.
 
+## Development
+
+```sh
+npm install
+npm run dev
+npm run typecheck
+npm test
+npm run build
+```
+
 ## Project documentation
 
 - `docs/knowledge/README.md`: reusable project knowledge.
@@ -21,4 +31,4 @@ Rooted is designed as an interactive family history book: a warm paper-inspired 
 
 ## Status
 
-Planning only. No application implementation has started.
+Phase 1 foundation implemented on the request branch. Automated verification is pending.
