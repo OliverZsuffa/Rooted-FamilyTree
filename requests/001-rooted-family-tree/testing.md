@@ -1,21 +1,26 @@
 # Testing plan: Rooted family tree
 
-**Status:** Test plan established. Automated checks have been added to GitHub Actions but have not yet been observed completing successfully.
+**Status:** Automated checks are running in GitHub Actions. Browser, persistence, and offline verification remain outstanding.
 
 Record actual observations after implementation. Do not mark a test as passed until it has been performed.
 
 ## Automated checks
 
-- [ ] TypeScript type check.
-- [ ] Unit tests for relationship validation and ancestry cycle detection.
-- [ ] Unit tests for generation calculation, including biological, adoptive, step-parent, and guardian cases.
-- [ ] Tests for multiple partnerships and partnership junctions.
-- [ ] Import/export round-trip tests.
-- [ ] Invalid import leaves the existing project unchanged.
+- [x] Schema tests for empty projects and unsupported schema versions.
+- [x] Schema test for invalid calendar dates.
+- [x] Relationship tests for biological and adoptive generation calculation.
+- [x] Relationship tests for step-parent and guardian links not affecting generations.
+- [x] Relationship tests for circular ancestry.
+- [x] Relationship tests for incompatible generation assignments.
+- [x] Relationship tests for newly connected parents joining the correct generation.
+- [x] Derived sibling relationship test.
+- [x] Duplicate parentage relationship test.
+- [x] Backup validation tests for custom attributes, partnerships, duplicate people, missing partnership endpoints, and circular ancestry.
 - [ ] IndexedDB persistence and schema migration tests.
-- [ ] Layout tests verify manual positions survive ordinary edits and relationship updates.
-- [ ] Production build succeeds.
-- [ ] GitHub Actions checks succeed.
+- [ ] Import/export browser round-trip test.
+- [ ] Component and interaction tests for editing, relationships, undo, and redo.
+- [ ] Latest GitHub Actions run must be confirmed successful.
+- [ ] Production build under the final Pages path must be manually inspected.
 
 ## Desktop manual tests
 
@@ -28,8 +33,8 @@ Record actual observations after implementation. Do not mark a test as passed un
 7. Drag people within their generation and verify connecting lines update.
 8. Edit a person and verify manual positions remain unchanged.
 9. Use automatic layout and verify the tree is reorganized.
-10. Search for a person and highlight their ancestors and descendants.
-11. Undo and redo person and relationship changes.
+10. Search for a person.
+11. Undo and redo person, relationship, and layout changes.
 12. Export the tree, import it into a clean browser profile, and compare all data and positions.
 
 ## Mobile manual tests
@@ -57,4 +62,4 @@ Record actual observations after implementation. Do not mark a test as passed un
 
 ## Actual results
 
-To be completed only after the relevant checks have been run.
+Automated results will be recorded after the latest run completes. No manual browser or offline tests have been performed yet.
