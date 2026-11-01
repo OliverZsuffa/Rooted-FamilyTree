@@ -2,7 +2,7 @@
 
 ## Status
 
-Plan prepared on 2026-11-01. Awaiting explicit user approval. No application code changes are authorised yet.
+Approved by the user on 2026-11-01. Implemented on branch `request/009-first-name-only` and submitted as PR #9. CI verification is running. Do not merge without separate explicit approval.
 
 ## 1. Inspect the current name editing flow
 
