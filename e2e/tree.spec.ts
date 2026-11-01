@@ -30,9 +30,11 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
   await page.getByRole('button', { name: 'Save relationship' }).click();
 
+  await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
   await page.locator('.react-flow__node').filter({ hasText: 'Ada Example' }).click({ force: true });
   await expect(page.getByText('Ben Example · parent')).toBeVisible();
 
+  await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
   await page.locator('.react-flow__node').filter({ hasText: 'Cara Example' }).click({ force: true });
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Gender').selectOption('female');
@@ -56,7 +58,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
-  await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+  await expect(page.locator('.react-flow__edge')).toHaveCount(3);
 });
 
 test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }, testInfo) => {
