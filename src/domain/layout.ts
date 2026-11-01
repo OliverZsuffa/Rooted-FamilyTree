@@ -14,7 +14,7 @@ export function createFallbackPositions(project: Pick<Project, 'people' | 'paren
   const positions: Record<string, Position> = {};
   for (const [generation, ids] of bands) {
     ids.forEach((id, index) => {
-      positions[id] = { x: index * 240, y: generation * 220 };
+      positions[id] = { x: index * 240, y: generation * 190 };
     });
   }
   for (const group of getFamilyGroups(project)) {
@@ -86,7 +86,7 @@ export async function calculateAutoPositions(
     let nextAvailableX = 0;
     for (const person of ordered) {
       const x = Math.max(elkX.get(person.id) ?? fallback[person.id]?.x ?? 0, nextAvailableX);
-      laidOut[person.id] = { x, y: generation * 220 };
+      laidOut[person.id] = { x, y: generation * 190 };
       nextAvailableX = x + 224;
     }
   }
