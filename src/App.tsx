@@ -147,12 +147,13 @@ function App() {
         });
       } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
         event.preventDefault();
+        const current = projectRef.current;
         setHistory((state) => {
           if (!state.future.length) return state;
           const next = state.future[0];
           projectRef.current = next;
           setProject(next);
-          return { past: [...state.past, next].slice(-50), future: state.future.slice(1) };
+          return { past: [...state.past, ...(current ? [current] : [])].slice(-50), future: state.future.slice(1) };
         });
       }
     };
@@ -161,12 +162,13 @@ function App() {
   }, []);
 
   const redo = () => {
+    const current = projectRef.current;
     setHistory((state) => {
       if (!state.future.length) return state;
       const next = state.future[0];
       projectRef.current = next;
       setProject(next);
-      return { past: [...state.past, next].slice(-50), future: state.future.slice(1) };
+      return { past: [...state.past, ...(current ? [current] : [])].slice(-50), future: state.future.slice(1) };
     });
   };
 
