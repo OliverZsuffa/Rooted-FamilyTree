@@ -248,7 +248,7 @@ function App() {
   }, [project?.people, project?.parentage, project?.partnerships]);
 
   useEffect(() => {
-    if (selectedId && search && !project?.people.some((person) => person.id === selectedId && (person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase()))))) setSelectedId(null);
+    if (selectedId && search && !project?.people.some((person) => person.id === selectedId && (person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase()) || entry.newName.toLowerCase().includes(search.toLowerCase()))))) setSelectedId(null);
   }, [selectedId, search, project?.people]);
 
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
@@ -292,7 +292,7 @@ function App() {
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
-    const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase())));
+    const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()) || person.nameHistory.some((entry) => entry.previousName.toLowerCase().includes(search.toLowerCase()) || entry.newName.toLowerCase().includes(search.toLowerCase())));
     const visibleIds = new Set(visiblePeople.map((person) => person.id));
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
       id: person.id, type: 'person',
@@ -494,8 +494,9 @@ function App() {
     setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
     setPartnershipStartDate(relation.startDate ?? '');
     setPartnershipEndDate(relation.endDate ?? '');
-    const firstChange = relation.nameChanges.find((item) => item.personId === relation.person1Id);
-    const secondChange = relation.nameChanges.find((item) => item.personId === relation.person2Id);
+    const otherId = relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id;
+    const firstChange = relation.nameChanges.find((item) => item.personId === selectedPerson.id);
+    const secondChange = relation.nameChanges.find((item) => item.personId === otherId);
     setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
     setFirstNewName(firstChange?.newName ?? '');
     setSecondNewName(secondChange?.newName ?? '');
@@ -644,9 +645,12 @@ function App() {
               {selectedPerson.nameHistory.length > 0 && (
                 <div className="relationship-list">
                   <span className="relationship-heading">Previous names</span>
-                  {selectedPerson.nameHistory.map((entry) => (
-                    <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{entry.effectiveDate ? ' · ' + entry.effectiveDate : ''}</span></div>
-                  ))}
+                  {selectedPerson.nameHistory.map((entry) => {
+                    const marriage = project.partnerships.find((item) => item.id === entry.partnershipId);
+                    const otherId = marriage ? (marriage.person1Id === selectedPerson.id ? marriage.person2Id : marriage.person1Id) : null;
+                    const otherName = otherId ? project.people.find((person) => person.id === otherId)?.name : null;
+                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{entry.effectiveDate ? ' · ' + entry.effectiveDate : ''}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
+                  })}
                 </div>
               )}
               {Object.entries(selectedPerson.attributes).length > 0 && <div className="person-details">{Object.entries(selectedPerson.attributes).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value === null ? 'Not set' : String(value)}</strong></div>)}</div>}
