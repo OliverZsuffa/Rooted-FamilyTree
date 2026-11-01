@@ -34,8 +34,10 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
     >
       <Handle type="target" position={Position.Top} />
-      <Handle type="target" position={Position.Left} id="partnership-left" />
-      <Handle type="source" position={Position.Right} id="partnership-right" />
+      <Handle type="target" position={Position.Left} id="partnership-in-left" />
+      <Handle type="source" position={Position.Left} id="partnership-out-left" />
+      <Handle type="target" position={Position.Right} id="partnership-in-right" />
+      <Handle type="source" position={Position.Right} id="partnership-out-right" />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
@@ -313,7 +315,7 @@ function App() {
 
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
   }, [project, nodes, selectedId, highlightedIds]);
 
   const exportProject = () => {
