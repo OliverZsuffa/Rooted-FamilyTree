@@ -25,7 +25,8 @@ test('shows multiple people and renders parentage and partnership edges', async 
       expect(boxes[i].right <= boxes[j].left || boxes[j].right <= boxes[i].left || boxes[i].bottom <= boxes[j].top || boxes[j].bottom <= boxes[i].top).toBe(true);
     }
   }
-  await page.locator('.react-flow__node').filter({ hasText: 'Ben Example' }).click({ force: true });
+  await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Ben Example' }).click();
   await page.getByRole('button', { name: 'Add relationship' }).click();
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
   await page.getByRole('button', { name: 'Save relationship' }).click();
