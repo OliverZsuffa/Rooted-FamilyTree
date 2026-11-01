@@ -30,22 +30,32 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
   await page.getByRole('button', { name: 'Save relationship' }).click();
 
+  await page.locator('.react-flow__node').filter({ hasText: 'Ada Example' }).click({ force: true });
+  await expect(page.getByText('Ben Example · parent')).toBeVisible();
+
   await page.locator('.react-flow__node').filter({ hasText: 'Cara Example' }).click({ force: true });
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Gender').selectOption('female');
+  await page.getByRole('button', { name: 'Save person' }).click();
   await page.getByRole('button', { name: 'Add relationship' }).click();
   await page.getByLabel('Relationship type').selectOption('marriage');
+  await page.getByLabel('Who changes their name?').selectOption('first');
+  await page.getByLabel('New full name for Cara Example').fill('Cara New Example');
+  await page.getByLabel('Started').fill('2020-01-01');
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
   await page.getByRole('button', { name: 'Save relationship' }).click();
 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
-  await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
+  await expect(page.getByText(/Cara Example to Cara New Example.*2020-01-01/)).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Daria Example' })).toBeVisible();
-  await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+  await expect(page.locator('.react-flow__edge')).toHaveCount(3);
   await page.waitForTimeout(450);
   await page.reload();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
-  await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(2);
 });
 
