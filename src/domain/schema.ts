@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 export const attributeValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const isoDateSchema = z.string().refine((value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
 export const personSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(''),
-  birthDate: z.string().nullable().default(null),
-  deathDate: z.string().nullable().default(null),
+  birthDate: isoDateSchema.nullable().default(null),
+  deathDate: isoDateSchema.nullable().default(null),
   attributes: z.record(z.string(), attributeValueSchema).default({}),
   displayAttribute: z.string().nullable().default(null),
 });
@@ -18,7 +19,7 @@ export const partnershipTypeSchema = z.enum(['marriage', 'partnership']);
 export const partnershipSchema = z.object({
   id: z.string().min(1), type: partnershipTypeSchema,
   person1Id: z.string().min(1), person2Id: z.string().min(1),
-  startDate: z.string().nullable().default(null), endDate: z.string().nullable().default(null),
+  startDate: isoDateSchema.nullable().default(null), endDate: isoDateSchema.nullable().default(null),
 });
 export const pointSchema = z.object({ x: z.number(), y: z.number() });
 export const projectSchema = z.object({
