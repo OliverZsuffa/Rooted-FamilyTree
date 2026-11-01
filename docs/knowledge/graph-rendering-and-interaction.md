@@ -20,12 +20,14 @@ Keep relationship edge construction in `src/domain/relationshipEdges.ts` so the 
 
 ## Touch interaction
 
-- React Flow canvas gestures need `touch-action: none` on the canvas and node surfaces so browser scrolling does not consume drag gestures.
-- Restore `touch-action: pan-y` on the person details panel so its content remains scrollable.
-- Person-card touch movement is handled explicitly in the custom node and converted from screen coordinates to flow coordinates with `screenToFlowPosition`.
-- Save one undo history entry for the complete touch drag, not one entry per touch-move event.
+- React Flow owns person card dragging for both mouse and touch input. Do not add a second custom touch movement path to person cards. Competing touch and pointer handlers can fight over node position and cause visible flicker.
+- Keep the controlled React Flow node list in local UI state. Apply React Flow node changes to that list during a gesture instead of committing the entire family tree project on every pointer movement.
+- Persist the final person position to the project only once when the drag ends. This keeps IndexedDB autosave and application history out of the high frequency movement loop.
+- A completed drag creates one undo history entry. A drag that does not change position creates none.
+- Clamp the saved vertical position to the person's calculated generation.
+- Keep touch gestures inside the canvas with `touch-action: none` on the canvas and node surfaces. Restore `touch-action: pan-y` on the person details panel so its content remains scrollable.
 - Canvas panning and pinch zoom should remain available when gestures start on the empty canvas.
-- Browser emulation can verify touch events, but it does not replace a real Android device check.
+- Browser emulation can verify touch events and DOM stability, but it does not replace a real Android device check.
 
 ## Verification
 
