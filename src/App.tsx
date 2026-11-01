@@ -212,6 +212,10 @@ function App() {
     return () => { active = false; };
   }, [project?.people, project?.parentage]);
 
+  useEffect(() => {
+    if (selectedId && search && !project?.people.some((person) => person.id === selectedId && person.name.toLowerCase().includes(search.toLowerCase()))) setSelectedId(null);
+  }, [selectedId, search, project?.people]);
+
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
   const generations = useMemo(() => project ? calculateGenerations(project) : null, [project]);
   const nodes = useMemo<FlowNode[]>(() => {
@@ -522,6 +526,7 @@ function App() {
       ) : (
         <section className="tree-workspace">
           <div className="tree-hint">Select a person to view their details. Drag to arrange within each generation.</div>
+          {search && !nodes.some((node) => node.type === 'person') && <div className="search-empty">No matching people.</div>}
           <ReactFlow
             nodes={nodes}
             edges={edges}
