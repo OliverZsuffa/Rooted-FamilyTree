@@ -1,4 +1,4 @@
-import type { Gender, Person, Project } from './schema';
+import type { Person, Project } from './schema';
 
 const ancestryTypes = new Set(['biological_parent', 'adoptive_parent']);
 
@@ -59,8 +59,8 @@ export function getKinshipLabel(project: Project, subjectId: string, relativeId:
 
   const relativeAncestors = ancestry(project, relativeId);
   const subjectAncestors = ancestry(project, subjectId);
-  const relativeAsAncestor = relativeAncestors.get(subjectId);
-  const subjectAsAncestor = subjectAncestors.get(relativeId);
+  const relativeAsAncestor = subjectAncestors.get(relativeId);
+  const subjectAsAncestor = relativeAncestors.get(subjectId);
   if (relativeAsAncestor !== undefined) {
     if (relativeAsAncestor === 1) return gendered(relative, 'mother', 'father', 'parent');
     if (relativeAsAncestor === 2) return gendered(relative, 'grandmother', 'grandfather', 'grandparent');
