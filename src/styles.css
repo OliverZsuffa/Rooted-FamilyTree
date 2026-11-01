@@ -141,6 +141,10 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   overscroll-behavior: contain;
 }
 
+.tree-workspace .person-panel {
+  touch-action: pan-y;
+}
+
 @media (max-width: 600px) {
   .app-shell { height: 100dvh; min-height: 100dvh; }
   .tree-workspace { min-height: 0; height: 100%; flex: 1 1 auto; }
