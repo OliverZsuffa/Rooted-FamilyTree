@@ -86,6 +86,7 @@ function App() {
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
   const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [storageReady, setStorageReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saveState, setSaveState] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<'person' | 'relationship' | null>(null);
@@ -179,6 +180,7 @@ function App() {
       const initial = saved ?? createEmptyProject();
       projectRef.current = initial;
       setProject(initial);
+      setLoadFailed(false);
       setStorageReady(true);
       setSaveState('saved');
     }).catch(() => {
@@ -186,6 +188,7 @@ function App() {
       const initial = createEmptyProject();
       projectRef.current = initial;
       setProject(initial);
+      setLoadFailed(true);
       setStorageReady(false);
       setSaveState('error');
     });
@@ -511,6 +514,7 @@ function App() {
           <button className="primary-button" onClick={() => openPerson()}><Plus size={16} /> Add person</button>
         </div>
       </header>
+      {loadFailed && <div className="storage-warning">Rooted could not open your saved tree. Your existing data has not been changed. Reload to try again.</div>}
       {searchOpen && <div className="search-bar"><Search size={16} /><input autoFocus placeholder="Find someone…" value={search} onChange={(event) => setSearch(event.target.value)} /><button className="icon-button" onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Close search"><X size={16} /></button></div>}
       {project.people.length === 0 ? (
         <section className="canvas empty-canvas">
