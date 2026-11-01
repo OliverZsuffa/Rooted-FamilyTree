@@ -5,17 +5,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: '/Rooted-FamilyTree/',
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('/node_modules/elkjs/')) return 'elk-layout';
-          if (id.includes('/node_modules/@xyflow/')) return 'family-canvas';
-          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react-vendor';
-        },
-      },
-    },
-  },
   plugins: [
     react(),
     tailwindcss(),
