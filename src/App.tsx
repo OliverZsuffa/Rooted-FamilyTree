@@ -69,7 +69,7 @@ function syncGenerationRows(project: Project): Project {
   const manualPositions = Object.fromEntries(
     Object.entries(project.layout.manualPositions)
       .filter(([id]) => people.has(id))
-      .map(([id, position]) => [id, { x: position.x, y: (result.generations.get(id) ?? 0) * 190 }]),
+      .map(([id, position]) => [id, { x: position.x, y: (result.generations.get(id) ?? 0) * 220 }]),
   );
   return { ...project, layout: { manualPositions } };
 }
@@ -548,7 +548,7 @@ function App() {
     const result = calculateGenerations(current);
     if (!result.ok) return;
     const generation = result.generations.get(node.id) ?? 0;
-    const y = Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, node.position.y));
+    const y = Math.max(generation * 220 - 45, Math.min(generation * 220 + 45, node.position.y));
     commitProject({
       ...current,
       layout: {
