@@ -1,7 +1,18 @@
 import { z } from 'zod';
 
 export const attributeValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-const isoDateSchema = z.string().refine((value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
+function isValidPartialDate(value: string): boolean {
+  if (/^\d{4}$/.test(value)) return Number(value) >= 1;
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(value);
+  if (monthMatch) return Number(monthMatch[1]) >= 1 && Number(monthMatch[2]) >= 1 && Number(monthMatch[2]) <= 12;
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!dateMatch) return false;
+  const year = Number(dateMatch[1]), month = Number(dateMatch[2]), day = Number(dateMatch[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return year >= 1 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+export const partialDateSchema = z.string().refine(isValidPartialDate, 'Expected YYYY, YYYY-MM, or a valid YYYY-MM-DD date');
+const isoDateSchema = partialDateSchema;
 export const genderSchema = z.enum(['female', 'male', 'nonbinary']).nullable().default(null);
 export const nameHistorySchema = z.object({
   id: z.string().min(1),
@@ -13,6 +24,10 @@ export const nameHistorySchema = z.object({
 export const personSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(''),
+  firstName: z.string().optional(),
+  middleName: z.string().optional(),
+  lastName: z.string().optional(),
+  manualIncomplete: z.boolean().optional(),
   gender: genderSchema,
   nameHistory: z.array(nameHistorySchema).default([]),
   birthDate: isoDateSchema.nullable().default(null),
@@ -24,6 +39,7 @@ export const parentageTypeSchema = z.enum(['biological_parent', 'adoptive_parent
 export const parentageSchema = z.object({
   id: z.string().min(1), type: parentageTypeSchema,
   parentId: z.string().min(1), childId: z.string().min(1),
+  manualIncomplete: z.boolean().optional(),
 });
 export const partnershipTypeSchema = z.enum(['marriage', 'partnership']);
 export const partnershipNameChangeSchema = z.object({
@@ -37,6 +53,7 @@ export const partnershipSchema = z.object({
   person1Id: z.string().min(1), person2Id: z.string().min(1),
   startDate: isoDateSchema.nullable().default(null), endDate: isoDateSchema.nullable().default(null),
   nameChanges: z.array(partnershipNameChangeSchema).default([]),
+  manualIncomplete: z.boolean().optional(),
 });
 export const pointSchema = z.object({ x: z.number(), y: z.number() });
 export const projectSchema = z.object({
