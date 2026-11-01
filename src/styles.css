@@ -171,3 +171,21 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   width: 100%;
   height: 100%;
 }
+
+
+/* Small, neutral junctions group children by their exact recorded biological and adoptive parents. */
+.family-junction {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(139, 118, 94, .65);
+  border-radius: 50%;
+  background: #f2eee4;
+  box-shadow: 0 1px 4px rgba(72, 55, 35, .08);
+}
+.family-junction-dimmed { opacity: .2; }
+.family-junction .react-flow__handle { opacity: 0; }
+.person-card .react-flow__handle-left,
+.person-card .react-flow__handle-right { top: 50%; }
+.person-card .react-flow__handle-left { left: -3px; }
+.person-card .react-flow__handle-right { right: -3px; }
