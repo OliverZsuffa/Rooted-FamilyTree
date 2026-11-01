@@ -225,17 +225,15 @@ function App() {
       data: { person, selected: person.id === selectedId },
     }));
     const junctionNodes: JunctionFlowNode[] = [];
-    const generationResult = calculateGenerations(project);
     for (const partnership of project.partnerships) {
       const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
         && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
       if (!sharedChildren.some((child) => visibleIds.has(child.childId)) || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
       const first = project.layout.manualPositions[partnership.person1Id] ?? automatic[partnership.person1Id] ?? { x: 0, y: 0 };
       const second = project.layout.manualPositions[partnership.person2Id] ?? automatic[partnership.person2Id] ?? { x: 0, y: 0 };
-      const childGeneration = generationResult.ok ? generationResult.generations.get(sharedChildren[0].childId) ?? 1 : 1;
       junctionNodes.push({
         id: 'junction:' + partnership.id, type: 'junction',
-        position: { x: (first.x + second.x) / 2 + 76, y: (childGeneration - 1) * 190 + 95 },
+        position: { x: (first.x + second.x) / 2 + 76, y: (first.y + second.y) / 2 + 95 },
         data: { symbol: partnership.type === 'marriage' ? '♥' : '♡' },
         draggable: false, selectable: false,
       });
