@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
   Handle, Position, type ReactFlowInstance,
@@ -13,19 +13,51 @@ import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-type PersonNodeData = { person: Person; selected: boolean; dimmed: boolean };
+type PersonNodeData = {
+  person: Person;
+  selected: boolean;
+  dimmed: boolean;
+  onTouchDragStart: (id: string, clientX: number, clientY: number, positionX: number, positionY: number) => void;
+  onTouchDragMove: (clientX: number, clientY: number) => void;
+  onTouchDragStop: () => void;
+};
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
 type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
-function PersonCard({ data }: NodeProps<PersonFlowNode>) {
+function PersonCard({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
+  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) return;
+    event.stopPropagation();
+    const touch = event.touches[0];
+    data.onTouchDragStart(data.person.id, touch.clientX, touch.clientY, positionAbsoluteX, positionAbsoluteY);
+  };
+  const handleTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      data.onTouchDragStop();
+      return;
+    }
+    event.stopPropagation();
+    const touch = event.touches[0];
+    data.onTouchDragMove(touch.clientX, touch.clientY);
+  };
+  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    data.onTouchDragStop();
+  };
   return (
-    <div className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}>
+    <div
+      className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
+      onTouchStartCapture={handleTouchStart}
+      onTouchMoveCapture={handleTouchMove}
+      onTouchEndCapture={handleTouchEnd}
+      onTouchCancelCapture={handleTouchEnd}
+    >
       <Handle type="target" position={Position.Top} />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
@@ -68,6 +100,7 @@ function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStartProject = useRef<Project | null>(null);
+  const touchDrag = useRef<{ id: string; clientX: number; clientY: number; positionX: number; positionY: number; before: Project } | null>(null);
   const reactFlowInstance = useRef<ReactFlowInstance<FlowNode, Edge> | null>(null);
   const lastFittedStructure = useRef('');
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
@@ -106,6 +139,44 @@ function App() {
     if (recordHistory) setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
     projectRef.current = updated;
     setProject(updated);
+  }, []);
+
+  const onPersonTouchDragStart = useCallback((
+    id: string, clientX: number, clientY: number, positionX: number, positionY: number,
+  ) => {
+    const before = projectRef.current;
+    if (!before || !before.people.some((person) => person.id === id)) return;
+    touchDrag.current = { id, clientX, clientY, positionX, positionY, before };
+  }, []);
+
+  const onPersonTouchDragMove = useCallback((clientX: number, clientY: number) => {
+    const drag = touchDrag.current;
+    const current = projectRef.current;
+    const flow = reactFlowInstance.current;
+    if (!drag || !current || !flow) return;
+    const start = flow.screenToFlowPosition({ x: drag.clientX, y: drag.clientY });
+    const next = flow.screenToFlowPosition({ x: clientX, y: clientY });
+    const generations = calculateGenerations(current);
+    const generation = generations.ok ? generations.generations.get(drag.id) ?? 0 : 0;
+    const y = Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, drag.positionY + next.y - start.y));
+    commitProject({
+      ...current,
+      layout: {
+        manualPositions: {
+          ...current.layout.manualPositions,
+          [drag.id]: { x: drag.positionX + next.x - start.x, y },
+        },
+      },
+    }, false);
+  }, [commitProject]);
+
+  const onPersonTouchDragStop = useCallback(() => {
+    const drag = touchDrag.current;
+    const after = projectRef.current;
+    if (drag && after && drag.before !== after) {
+      setHistory((state) => ({ past: [...state.past, drag.before].slice(-50), future: [] }));
+    }
+    touchDrag.current = null;
   }, []);
 
   const undo = () => {
@@ -280,7 +351,14 @@ function App() {
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
       id: person.id, type: 'person',
       position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
-      data: { person, selected: person.id === selectedId, dimmed: !!selectedId && !highlightedIds.has(person.id) },
+      data: {
+        person,
+        selected: person.id === selectedId,
+        dimmed: !!selectedId && !highlightedIds.has(person.id),
+        onTouchDragStart: onPersonTouchDragStart,
+        onTouchDragMove: onPersonTouchDragMove,
+        onTouchDragStop: onPersonTouchDragStop,
+      },
     }));
     const junctionNodes: JunctionFlowNode[] = [];
     for (const partnership of project.partnerships) {
@@ -297,7 +375,7 @@ function App() {
       });
     }
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds, onPersonTouchDragStart, onPersonTouchDragMove, onPersonTouchDragStop]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
     return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
