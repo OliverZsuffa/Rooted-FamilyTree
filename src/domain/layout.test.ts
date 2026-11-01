@@ -332,4 +332,41 @@ describe('recursive family layout', () => {
     expect(Object.keys(positions).filter((id) => id === 'ancestorA')).toHaveLength(1);
   });
 
+
+  it('keeps the corrected CA, AB, BA exact-parent-set groups together', () => {
+    const project = makeProject(['A', 'B', 'C', 'CA', 'AB', 'BA']);
+    project.parentage = [
+      { id: 'ca-c', type: 'biological_parent', parentId: 'C', childId: 'CA' },
+      { id: 'ca-a', type: 'biological_parent', parentId: 'A', childId: 'CA' },
+      { id: 'ab-a', type: 'biological_parent', parentId: 'A', childId: 'AB' },
+      { id: 'ab-b', type: 'biological_parent', parentId: 'B', childId: 'AB' },
+      { id: 'ba-a', type: 'biological_parent', parentId: 'A', childId: 'BA' },
+      { id: 'ba-b', type: 'biological_parent', parentId: 'B', childId: 'BA' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    const childOrder = ['CA', 'AB', 'BA'].sort((a, b) => positions[a].x - positions[b].x);
+    const abIndex = childOrder.indexOf('AB');
+    const baIndex = childOrder.indexOf('BA');
+
+    expect(Math.abs(abIndex - baIndex)).toBe(1);
+    expect(childOrder).toContain('CA');
+    expect(Object.keys(positions).filter((id) => ['A', 'B', 'C', 'CA', 'AB', 'BA'].includes(id))).toHaveLength(6);
+  });
+
+  it('keeps shared people unique after global layered ordering', () => {
+    const project = makeProject(['shared', 'partnerA', 'partnerB', 'childA', 'childB']);
+    project.parentage = [
+      { id: 's-a', type: 'biological_parent', parentId: 'shared', childId: 'childA' },
+      { id: 'a-a', type: 'biological_parent', parentId: 'partnerA', childId: 'childA' },
+      { id: 's-b', type: 'biological_parent', parentId: 'shared', childId: 'childB' },
+      { id: 'b-b', type: 'biological_parent', parentId: 'partnerB', childId: 'childB' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    expect(positions.shared).toBeDefined();
+    expect(Object.keys(positions).filter((id) => id === 'shared')).toHaveLength(1);
+    expect(positions.childA.y).toBe(positions.childB.y);
+  });
+
 });
