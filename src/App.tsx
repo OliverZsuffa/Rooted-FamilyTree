@@ -100,6 +100,7 @@ function App() {
   const [partnershipStartDate, setPartnershipStartDate] = useState('');
   const [partnershipEndDate, setPartnershipEndDate] = useState('');
   const [relationPersonId, setRelationPersonId] = useState('');
+  const [newRelativeName, setNewRelativeName] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
   const [relationError, setRelationError] = useState('');
   const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
@@ -363,16 +364,22 @@ function App() {
   const saveRelationship = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
+    if (relationPersonId === '__new__' && !newRelativeName.trim()) { setRelationError('Enter the new person’s name.'); return; }
+    const newRelative = relationPersonId === '__new__'
+      ? { id: crypto.randomUUID(), name: newRelativeName.trim(), birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }
+      : null;
+    const otherPersonId = newRelative?.id ?? relationPersonId;
+    const baseProject = newRelative ? { ...project, people: [...project.people, newRelative] } : project;
     if (relationType === 'marriage' || relationType === 'partnership') {
       const partnership = {
         id: editingRelation?.kind === 'partnership' ? editingRelation.id : crypto.randomUUID(),
-        type: relationType, person1Id: selectedPerson.id, person2Id: relationPersonId,
+        type: relationType, person1Id: selectedPerson.id, person2Id: otherPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
       };
       const partnerships = editingRelation?.kind === 'partnership'
-        ? project.partnerships.map((item) => item.id === editingRelation.id ? partnership : item)
-        : [...project.partnerships, partnership];
-      commitProject({ ...project, partnerships });
+        ? baseProject.partnerships.map((item) => item.id === editingRelation.id ? partnership : item)
+        : [...baseProject.partnerships, partnership];
+      commitProject({ ...baseProject, partnerships });
       setDialog(null);
       setEditingRelation(null);
       setRelationError('');
@@ -381,17 +388,17 @@ function App() {
     const relation = {
       id: editingRelation?.kind === 'parentage' ? editingRelation.id : crypto.randomUUID(),
       type: relationType,
-      parentId: relationDirection === 'child' ? selectedPerson.id : relationPersonId,
-      childId: relationDirection === 'child' ? relationPersonId : selectedPerson.id,
+      parentId: relationDirection === 'child' ? selectedPerson.id : otherPersonId,
+      childId: relationDirection === 'child' ? otherPersonId : selectedPerson.id,
     };
     const baseProject = editingRelation?.kind === 'parentage'
-      ? { ...project, parentage: project.parentage.filter((item) => item.id !== editingRelation.id) }
-      : project;
+      ? { ...baseProject, parentage: baseProject.parentage.filter((item) => item.id !== editingRelation.id) }
+      : baseProject;
     const error = validateParentage(baseProject, relation);
     if (error) { setRelationError(error); return; }
     const parentage = editingRelation?.kind === 'parentage'
-      ? project.parentage.map((item) => item.id === editingRelation.id ? relation : item)
-      : [...project.parentage, relation];
+      ? baseProject.parentage.map((item) => item.id === editingRelation.id ? relation : item)
+      : [...baseProject.parentage, relation];
     commitProject(syncGenerationRows({ ...project, parentage }));
     setDialog(null);
     setEditingRelation(null);
@@ -555,7 +562,7 @@ function App() {
               </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -628,8 +635,10 @@ function App() {
                   <select required value={relationPersonId} onChange={(event) => setRelationPersonId(event.target.value)}>
                     <option value="">Choose a person</option>
                     {project.people.filter((person) => person.id !== selectedPerson?.id).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                    <option value="__new__">Create a new person…</option>
                   </select>
                 </label>
+                {relationPersonId === '__new__' && <label>New person’s name<input autoFocus required value={newRelativeName} onChange={(event) => setNewRelativeName(event.target.value)} placeholder="Full name" /></label>}
                 {relationError && <p className="form-error">{relationError}</p>}
                 <button className="primary-button modal-submit" type="submit"><Check size={16} /> Save relationship</button>
               </form>
