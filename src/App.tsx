@@ -508,8 +508,8 @@ function App() {
     const firstChange = relation.nameChanges.find((item) => item.personId === selectedPerson.id);
     const secondChange = relation.nameChanges.find((item) => item.personId === otherId);
     setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
-    setFirstNewName(firstChange?.newName ?? '');
-    setSecondNewName(secondChange?.newName ?? '');
+    setFirstNewName(firstChange ? selectedPerson.name : '');
+    setSecondNewName(secondChange ? (project.people.find((person) => person.id === otherId)?.name ?? '') : '');
     setNameChangeDate(firstChange?.effectiveDate ?? secondChange?.effectiveDate ?? '');
     setRelationError('');
     setDialog('relationship');
