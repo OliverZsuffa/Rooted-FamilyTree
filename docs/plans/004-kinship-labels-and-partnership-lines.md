@@ -114,7 +114,39 @@ Do not infer gender from names.
 - Old backups without name history or marriage name-change data still import.
 - Export and re-import preserve all name history.
 
-## 5. Presentation
+
+
+## 5. Family-group generation layout
+
+### Layout model
+
+- Derive family groups from the exact set of recorded biological and adoptive parent IDs for each child. A family junction represents one distinct parent set.
+- Place children with the same exact parent set together beneath that junction. A child with only one recorded parent remains in a one-parent group. Never invent a second parent.
+- A parent may connect to multiple family junctions when children have different parent sets. The parent remains one person node and is never duplicated.
+- Partnership and marriage records remain independent from parentage. They must not create a family junction or imply shared children.
+- Keep family junctions visually subtle and use separate routing lanes for partnership links and parentage links. Avoid card overlaps and confusing crossings.
+- Preserve generation alignment, search filtering, mobile behaviour, and manual horizontal positioning. Filtering one person must not create misleading partial family groups.
+
+### Implementation approach
+
+1. Add a pure domain helper that groups children by their sorted, distinct biological and adoptive parent IDs. Keep group identity deterministic across renders.
+2. Extend the graph model with invisible family junction nodes positioned between the parent row and child row. Keep person nodes unique.
+3. Route each recorded parent to its family junction, then from the junction to each child. Do not suppress parentage records based on marriage records.
+4. Rework automatic layout to include family junction nodes in the layout graph so sibling clusters remain visually coherent. Keep fallback positions deterministic if ELK fails.
+5. Keep manual positions only for people. Junction positions are derived from their family group and current person positions.
+6. Test multiple families per parent, one-parent groups, half-siblings, adoptive and biological parents, filtering, and multiple partnerships.
+
+### Tests
+
+- Children with the same two recorded parents appear in one group.
+- Children with different parent sets appear in separate groups, even when they share one parent.
+- A parent with children from multiple partnerships appears once and connects to every applicable family junction.
+- A marriage without recorded shared parentage does not create a family group.
+- A child with one recorded parent is not assigned an invented second parent.
+- Biological and adoptive parentage participate in grouping. Step-parent and guardian records do not alter biological/adoptive family groups.
+- Search filtering and mobile view do not duplicate people or leave misleading orphan junctions.
+
+## 6. Presentation
 
 In the selected person's details panel, add a compact section listing other people and their relationship to the selected person.
 
@@ -130,7 +162,7 @@ In the marriage editor, keep name changes optional and visually secondary to the
 
 The exact placement and wording should be confirmed before implementation.
 
-## 6. Compatibility and validation
+## 7. Compatibility and validation
 
 - Keep the project schema version unchanged if the optional fields can be safely defaulted by the existing Zod schema.
 - Verify old JSON backups without gender, name history, or marriage name-change data still import.
@@ -138,7 +170,7 @@ The exact placement and wording should be confirmed before implementation.
 - Validate referenced marriage IDs and reject malformed or contradictory name-change records.
 - No remote resources or services.
 
-## 7. Verification
+## 8. Verification
 
 - Unit tests for all kinship calculations, gender variants, step relationships, half-siblings, multiple parents, ambiguous paths, and unrelated people.
 - Edge tests for partnership routing with and without shared children.
@@ -147,6 +179,6 @@ The exact placement and wording should be confirmed before implementation.
 - Run TypeScript, unit tests, Playwright desktop and mobile suites, production build, and PWA verification.
 - Inspect the actual rendered partnership paths in browser tests or screenshots. Do not rely only on edge object assertions.
 
-## Delivery
+## 9. Delivery
 
-This plan is for review only. Wait for explicit user approval before implementation. After approval, implement on `request/004-kinship-labels-and-partnership-lines`, document actual test results, and open a PR. Merge and deploy only after separate explicit approval.
+Implementation is approved. Implement on `request/004-kinship-labels-and-partnership-lines`, document actual test results, and open a PR. Merge only after the previously granted explicit approval and after required checks pass.
