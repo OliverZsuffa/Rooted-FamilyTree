@@ -1,9 +1,10 @@
-# Request 004: Clearer partnership lines and kinship labels
+# Request 004: Clearer partnership lines, kinship labels, and marriage name changes
 
 ## User report
 
 1. Marriage lines currently take a convoluted route. They appear to come from the bottom of a person card, travel behind the card, and return down. The user wants a more straightforward route that is not simply a direct straight line.
 2. The user wants Rooted to identify the family relationship one person has to another, using terms such as grandmother, aunt, niece, and stepson.
+3. The user wants name changes resulting from marriage to be documented as an optional part of the marriage record.
 
 ## Proposed outcome
 
@@ -27,6 +28,17 @@
 - Avoid inventing a relationship when the graph does not contain enough information. Use a neutral generic label or indicate that no known relationship is established.
 - Account for multiple parents, multiple partnerships, half-siblings, and ambiguous paths without silently choosing an arbitrary label.
 
+### Name changes recorded on a marriage
+
+- Add an optional name-change choice to each marriage record. When creating or editing a marriage, the user can choose that neither person changes their name, only the first person changes, only the second person changes, or both people change.
+- For each person who changes their name, record the resulting full name. Do not assume that only the surname changes or automatically construct a name.
+- The previous name is the person's name immediately before the change. Preserve it in that person's name history, together with the new full name, the marriage that caused the change, and the effective date.
+- Default the effective date to the marriage date. Allow a different effective date where needed.
+- A marriage must never change either person's name automatically. The user explicitly chooses and enters each change.
+- A later divorce or ended partnership does not erase the historical name change or automatically revert the person's name.
+- Search must find a person by both their current name and any recorded previous names.
+- Keep the name history visible in the person's details without cluttering the main canvas.
+
 ## Proposed person data
 
 Add an optional gender field to each person:
@@ -37,17 +49,21 @@ Add an optional gender field to each person:
 
 The field is optional and backward compatible. Existing imported backups without it remain valid. It is used only to select relationship wording, not to determine parentage or generation.
 
+Name history should be stored as dated records associated with the relevant marriage, while the person's current name remains the name displayed on the card. Existing people and backups without name history remain valid. Name changes are recorded only when explicitly configured on a marriage.
+
 ## Scope boundaries
 
 - No redesign of the tree or person editor.
 - No accounts, cloud services, or external APIs.
 - No manually entered kinship labels.
+- No automatic name changes when a marriage is created.
+- No automatic name reversion when a marriage ends.
 - No change to the existing generation rules.
 - Preserve local storage and JSON backup compatibility.
 
 ## Open UX detail
 
-The proposed location for calculated kinship labels is the selected person's details panel, as a compact list of other people and their relationship to the selected person. Confirm whether this is the intended presentation before implementation.
+The proposed location for calculated kinship labels is the selected person's details panel, as a compact list of other people and their relationship to the selected person. Name history should appear in the relevant person's details, with the marriage association and effective date. Confirm whether this is the intended presentation before implementation.
 
 ## Delivery workflow
 
