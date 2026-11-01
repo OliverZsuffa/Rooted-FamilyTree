@@ -123,11 +123,17 @@ function buildGenerationClusters(
   return rows;
 }
 
-function assignPositions(rows: Map<number, LayoutCluster[]>): Record<string, Position> {
+function assignPositions(
+  rows: Map<number, LayoutCluster[]>,
+  project: LayoutProject,
+  generations: Map<string, number>,
+): Record<string, Position> {
   const positions: Record<string, Position> = {};
-  for (const [generation, clusters] of [...rows.entries()].sort((a, b) => a[0] - b[0])) {
+  const orderedGenerations = [...rows.keys()].sort((a, b) => a - b);
+
+  for (const generation of orderedGenerations) {
     let nextX = 0;
-    for (const cluster of clusters) {
+    for (const cluster of rows.get(generation) ?? []) {
       cluster.members.forEach((person, index) => {
         positions[person.id] = {
           x: nextX + index * CARD_PITCH,
@@ -137,6 +143,31 @@ function assignPositions(rows: Map<number, LayoutCluster[]>): Record<string, Pos
       nextX += cluster.width + CARD_GAP;
     }
   }
+
+  // Shift each generation as a whole to retain average parent to child
+  // centring while the cluster order is optimised globally.
+  const generationOffsets = new Map<number, number>();
+  for (const generation of orderedGenerations) {
+    const connectedOffsets = project.parentage
+      .filter((relation) => FAMILY_TYPES.has(relation.type)
+        && generations.get(relation.childId) === generation
+        && generations.get(relation.parentId) === generation - 1
+        && positions[relation.parentId] && positions[relation.childId])
+      .map((relation) => {
+        const parentCentre = positions[relation.parentId].x + CARD_WIDTH / 2
+          + (generationOffsets.get(generation - 1) ?? 0);
+        const childCentre = positions[relation.childId].x + CARD_WIDTH / 2;
+        return parentCentre - childCentre;
+      });
+    const offset = connectedOffsets.length
+      ? connectedOffsets.reduce((sum, value) => sum + value, 0) / connectedOffsets.length
+      : 0;
+    generationOffsets.set(generation, offset);
+    for (const cluster of rows.get(generation) ?? []) {
+      for (const person of cluster.members) positions[person.id].x += offset;
+    }
+  }
+
   return positions;
 }
 
@@ -249,7 +280,7 @@ function optimiseGenerationOrder(
 
   const currentScore = calculateLayoutScore(project, generations, positions);
   rows.set(generation, candidate);
-  const candidatePositions = assignPositions(rows);
+  const candidatePositions = assignPositions(rows, project, generations);
   const candidateScore = calculateLayoutScore(project, generations, candidatePositions);
   if (isBetterScore(candidateScore, currentScore)) return candidatePositions;
 
@@ -262,7 +293,7 @@ function calculateFamilyCentredPositions(
   generations: Map<string, number>,
 ): Record<string, Position> {
   const rows = buildGenerationClusters(project, generations);
-  let positions = assignPositions(rows);
+  let positions = assignPositions(rows, project, generations);
   const generationOrder = [...rows.keys()].sort((a, b) => a - b);
 
   // Alternate downward and upward sweeps. Every move is evaluated against the
@@ -277,7 +308,7 @@ function calculateFamilyCentredPositions(
   }
 
   // Repack all generations using the final global order.
-  positions = assignPositions(rows);
+  positions = assignPositions(rows, project, generations);
 
   // Shift the whole tree together. This preserves every parent/child alignment.
   const personPositions = project.people.map((person) => positions[person.id]).filter((position): position is Position => !!position);
