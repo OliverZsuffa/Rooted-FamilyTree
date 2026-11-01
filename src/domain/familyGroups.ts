@@ -6,7 +6,6 @@ export type FamilyGroup = {
   id: string;
   parentIds: string[];
   childIds: string[];
-  generation: number;
 };
 
 export function getFamilyGroups(project: Pick<Project, 'people' | 'parentage'>): FamilyGroup[] {
