@@ -498,7 +498,7 @@ function App() {
   };
 
   const editPartnership = (relation: Project['partnerships'][number]) => {
-    if (!selectedPerson) return;
+    if (!selectedPerson || !project) return;
     setEditingRelation({ id: relation.id, kind: 'partnership' });
     setRelationType(relation.type);
     setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
