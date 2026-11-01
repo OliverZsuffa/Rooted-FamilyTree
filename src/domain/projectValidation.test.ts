@@ -36,6 +36,18 @@ describe('backup validation', () => {
     expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('date range') });
   });
 
+  it('rejects a marriage name change for someone outside the partnership', () => {
+    const project = createEmptyProject();
+    project.people = ['one', 'two', 'three'].map((id) => ({
+      id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+    }));
+    project.partnerships = [{
+      id: 'marriage', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: null, endDate: null,
+      nameChanges: [{ personId: 'three', previousName: 'Three', newName: 'Changed Three', effectiveDate: null }],
+    }];
+    expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('outside that partnership') });
+  });
+
   it('rejects a card attribute that does not exist', () => {
     const project = createEmptyProject();
     project.people = [{ id: 'one', name: 'One', gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: 'missing' }];
