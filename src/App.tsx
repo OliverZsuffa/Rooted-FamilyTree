@@ -4,7 +4,7 @@ import {
   Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, Heart, LayoutGrid, Plus, Search, Sprout, Trash2, Upload, X } from 'lucide-react';
+import { Check, Download, LayoutGrid, Plus, Search, Sprout, Trash2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { loadProject, saveProject } from './data/database';
@@ -61,7 +61,9 @@ function App() {
   const [personName, setPersonName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
-  const [relationType, setRelationType] = useState<ParentageType>('biological_parent');
+  const [relationType, setRelationType] = useState<ParentageType | 'marriage' | 'partnership'>('biological_parent');
+  const [partnershipStartDate, setPartnershipStartDate] = useState('');
+  const [partnershipEndDate, setPartnershipEndDate] = useState('');
   const [relationPersonId, setRelationPersonId] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
   const [relationError, setRelationError] = useState('');
@@ -191,6 +193,15 @@ function App() {
   const saveRelationship = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
+    if (relationType === 'marriage' || relationType === 'partnership') {
+      setProject({ ...project, partnerships: [...project.partnerships, {
+        id: crypto.randomUUID(), type: relationType as ParentageType, person1Id: selectedPerson.id, person2Id: relationPersonId,
+        startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
+      }] });
+      setDialog(null);
+      setRelationError('');
+      return;
+    }
     const relation = {
       id: crypto.randomUUID(), type: relationType,
       parentId: relationDirection === 'child' ? selectedPerson.id : relationPersonId,
@@ -228,18 +239,7 @@ function App() {
     });
   }, []);
 
-  const addPartnership = () => {
-    if (!project || !selectedPerson || !relationPersonId || relationPersonId === selectedPerson.id) return;
-    if (project.partnerships.some((item) => [item.person1Id, item.person2Id].includes(selectedPerson.id) && [item.person1Id, item.person2Id].includes(relationPersonId))) {
-      setRelationError('These people already have a partnership record.');
-      return;
-    }
-    setProject({ ...project, partnerships: [...project.partnerships, {
-      id: crypto.randomUUID(), type: 'marriage', person1Id: selectedPerson.id, person2Id: relationPersonId, startDate: null, endDate: null,
-    }] });
-    setDialog(null);
-    setRelationError('');
-  };
+
 
   if (!project) {
     return <main className="loading-screen"><Sprout size={28} /><span>Preparing your family tree</span></main>;
@@ -302,7 +302,7 @@ function App() {
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setRelationPersonId(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -332,16 +332,25 @@ function App() {
                 <p className="eyebrow">CONNECT YOUR TREE</p>
                 <h2 id="dialog-title">Add a relationship</h2>
                 <label>Relationship type
-                  <select value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType)}>
+                  <select value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType | 'marriage' | 'partnership')}>
                     {parentageTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    <option value="marriage">Marriage</option>
+                    <option value="partnership">Non marital partnership</option>
                   </select>
                 </label>
-                <label>Direction
-                  <select value={relationDirection} onChange={(event) => setRelationDirection(event.target.value as 'parent' | 'child')}>
-                    <option value="child">This person is the parent</option>
-                    <option value="parent">This person is the child</option>
-                  </select>
-                </label>
+                {relationType === 'marriage' || relationType === 'partnership' ? (
+                  <div className="date-fields">
+                    <label>Started<input type="date" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
+                    <label>Ended<input type="date" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
+                  </div>
+                ) : (
+                  <label>Direction
+                    <select value={relationDirection} onChange={(event) => setRelationDirection(event.target.value as 'parent' | 'child')}>
+                      <option value="child">This person is the parent</option>
+                      <option value="parent">This person is the child</option>
+                    </select>
+                  </label>
+                )}
                 <label>Connect to
                   <select required value={relationPersonId} onChange={(event) => setRelationPersonId(event.target.value)}>
                     <option value="">Choose a person</option>
@@ -350,7 +359,6 @@ function App() {
                 </label>
                 {relationError && <p className="form-error">{relationError}</p>}
                 <button className="primary-button modal-submit" type="submit"><Check size={16} /> Save relationship</button>
-                <button className="text-button" type="button" onClick={addPartnership}><Heart size={15} /> Add as marriage instead</button>
               </form>
             )}
           </section>
