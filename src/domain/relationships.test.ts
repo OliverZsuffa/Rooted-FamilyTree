@@ -4,7 +4,7 @@ import { calculateGenerations, getSiblings, validateParentage } from './relation
 
 function fixture(): Project {
   const project = createEmptyProject();
-  project.people = ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }));
+  project.people = ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }));
   return project;
 }
 
