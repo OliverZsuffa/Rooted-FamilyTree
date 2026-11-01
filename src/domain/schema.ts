@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const attributeValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-const isoDateSchema = z.string().refine((value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
+const isoDateSchema = z.string().refine((value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
 export const genderSchema = z.enum(['female', 'male', 'nonbinary']).nullable().default(null);
 export const nameHistorySchema = z.object({
   id: z.string().min(1),
