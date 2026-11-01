@@ -54,11 +54,11 @@ describe('relationship edge construction', () => {
     const edges = buildRelationshipEdges(project, visible, null, new Set(), positions);
     const first = edges.find((edge) => edge.id === 'family:a|b:parent:a');
     const second = edges.find((edge) => edge.id === 'family:a|c:parent:a');
-    expect(first?.pathOptions).toBeDefined();
-    expect(second?.pathOptions).toBeDefined();
-    expect(first?.pathOptions).not.toEqual(second?.pathOptions);
+    expect(first?.data?.routeLane).toBeDefined();
+    expect(second?.data?.routeLane).toBeDefined();
+    expect(first?.data?.routeLane).not.toEqual(second?.data?.routeLane);
     const reordered = buildRelationshipEdges({ ...project, parentage: [...project.parentage].reverse() }, visible, null, new Set(), positions);
-    expect(reordered.find((edge) => edge.id === first?.id)?.pathOptions).toEqual(first?.pathOptions);
+    expect(reordered.find((edge) => edge.id === first?.id)?.data?.routeLane).toEqual(first?.data?.routeLane);
   });
 
   it('keeps a partnership separate when it has no matching recorded children', () => {
