@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning and algorithm evaluation only. No application code has been changed. The first approved work stage is limited to research, source inspection, and isolated prototypes. Application implementation requires explicit approval after the results and final algorithm choice have been presented.
+Research and isolated prototype stage completed. No application code has been changed. The recommended implementation direction is documented below. Production implementation still requires explicit user approval.
 
 ## Goal
 
@@ -215,3 +215,22 @@ Record actual test results. Do not mark visual checks complete based only on CI.
 6. Review the complete diff and confirm connector improvements and manual positioning remain intact.
 7. Open a pull request with test evidence.
 8. Do not merge to `main` without separate explicit approval.
+
+
+## Research outcome and recommended algorithm
+
+The isolated prototype compared a stable baseline, a D3-inspired average-neighbour heuristic, constrained layered sweeps, and global pairwise block swaps. Across five synthetic fixtures, both iterative neighbour-based methods reduced crossings in the corrected parentage, shared-parent, and overlapping half-sibling cases. They tied on these fixtures. The prototype is reproducible in [prototype.py](prototype.py), and the assumptions and limitations are recorded in [notes.md](notes.md).
+
+The recommended production approach is a constrained layered optimiser with D3-inspired barycenter scores used only to propose candidate orderings:
+
+1. Retain the existing ancestry component discovery and downward collateral expansion.
+2. Build exact-parent-set sibling blocks. Parentless people are singleton blocks because an empty parent set does not establish a sibling relationship.
+3. Perform bounded downward and upward sweeps across generation rows.
+4. Use the average positions of adjacent-generation parents and children to propose block positions.
+5. Evaluate every proposed move against a global lexicographic objective. Hard structural constraints are absolute. Among valid layouts, minimise parentage crossings first, then edge span, then family-unit and half-sibling coherence.
+6. Accept only globally improving moves. Resolve exact ties deterministically using stable IDs only as the final tie breaker.
+7. Keep the best valid arrangement and stop at a documented sweep and candidate-evaluation budget.
+
+The D3 package itself should not be added as a dependency. Its source is an older D3 implementation, and its average-neighbour heuristic does not itself provide the explicit global acceptance objective required here.
+
+Before production implementation, the exact objective, candidate move set, and performance budget must be specified in code-level tasks. This revised plan is now ready for user review and approval.
