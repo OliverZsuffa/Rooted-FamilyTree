@@ -83,3 +83,6 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   .empty-canvas { min-height: calc(100dvh - 115px); }
   .footer { padding: 12px 14px; }
 }
+
+.update-banner { position: fixed; z-index: 15; right: 18px; bottom: 55px; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 15px; border: 1px solid #ddd5c7; border-radius: 9px; color: var(--brown); background: #faf8f1; box-shadow: 0 5px 22px rgba(72,55,35,.13); font-size: 11px; }
+@media (max-width: 600px) { .toolbar { gap: 1px; } .toolbar .icon-button { width: 30px; } .toolbar .primary-button { padding: 8px; } .update-banner { right: 10px; bottom: 48px; left: 10px; justify-content: space-between; } }
