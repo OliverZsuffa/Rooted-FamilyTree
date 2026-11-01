@@ -21,7 +21,7 @@ The approved initial implementation is in progress on `request/001-rooted-family
 - Automatically calculate generations and reject circular or inconsistent ancestry.
 - Use ELK.js for automatic layout, with persistent manual horizontal positioning.
 - Connect shared children through partnership junctions.
-- Search people, inspect profiles, and use undo/redo.
+- Search people, highlight family branches, inspect profiles, and use undo/redo.
 - Save locally in IndexedDB and import or export validated JSON backups.
 - Generate a PWA manifest and service worker for offline app assets.
 - Provide a GitHub Pages deployment workflow for the main branch.
