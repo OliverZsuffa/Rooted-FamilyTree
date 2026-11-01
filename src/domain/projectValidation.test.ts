@@ -6,10 +6,10 @@ describe('backup validation', () => {
   it('accepts a valid project with custom attributes and partnerships', () => {
     const project = createEmptyProject();
     project.people = [
-      { id: 'one', name: 'One', birthDate: null, deathDate: null, attributes: { occupation: 'Teacher', age: 42, living: true }, displayAttribute: 'occupation' },
-      { id: 'two', name: 'Two', birthDate: null, deathDate: null, attributes: {}, displayAttribute: null },
+      { id: 'one', name: 'One', gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: { occupation: 'Teacher', age: 42, living: true }, displayAttribute: 'occupation' },
+      { id: 'two', name: 'Two', gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null },
     ];
-    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: '2000-01-01', endDate: null }];
+    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: '2000-01-01', endDate: null, nameChanges: [] }];
     expect(validateProjectForImport(project).success).toBe(true);
   });
 
@@ -24,15 +24,15 @@ describe('backup validation', () => {
 
   it('rejects partnerships that reference missing people', () => {
     const project = createEmptyProject();
-    project.partnerships = [{ id: 'p', type: 'partnership', person1Id: 'missing', person2Id: 'also-missing', startDate: null, endDate: null }];
+    project.partnerships = [{ id: 'p', type: 'partnership', person1Id: 'missing', person2Id: 'also-missing', startDate: null, endDate: null, nameChanges: [] }];
     expect(validateProjectForImport(project)).toMatchObject({ success: false });
   });
 
 
   it('rejects partnership dates that end before they begin', () => {
     const project = createEmptyProject();
-    project.people = ['one', 'two'].map((id) => ({ id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }));
-    project.partnerships = [{ id: 'p', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: '2020-01-01', endDate: '2019-12-31' }];
+    project.people = ['one', 'two'].map((id) => ({ id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }));
+    project.partnerships = [{ id: 'p', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: '2020-01-01', endDate: '2019-12-31', nameChanges: [] }];
     expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('date range') });
   });
 
