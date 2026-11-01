@@ -12,7 +12,7 @@ Oliver approved the implementation plan. The initial functional application is b
 
 ## Implemented
 
-- React, TypeScript, Vite, Tailwind CSS, React Flow, ELK.js, Zod, IndexedDB, Lucide, and Vite PWA integration.
+- React, TypeScript, Vite 8, Tailwind CSS, React Flow, ELK.js, Zod 4, IndexedDB, Lucide, and Vite PWA integration.
 - Warm paper visual identity with brown as the primary colour and olive as the accent.
 - People with names, life dates, custom text, number, date, and boolean attributes.
 - Custom person card attribute selection.
@@ -32,8 +32,10 @@ Oliver approved the implementation plan. The initial functional application is b
 
 ## Verification
 
-- GitHub Actions runs typecheck, unit tests, and production build.
+- GitHub Actions runs dependency security checks, typecheck, unit tests, production build, and PWA path verification.
+- The dependency audit passes the high severity threshold. Ten low or moderate advisories remain in transitive build tooling and should be reviewed separately.
 - Several earlier runs exposed issues which were fixed on the request branch.
+- A completed verification run passed type checking, all 19 then current unit tests, and the Vite 8 production build. A later test adds one more validation case and is awaiting its current run.
 - The latest checks must be confirmed before declaring the implementation verified.
 - No local browser test has been performed.
 - The first GitHub Pages deployment has not been performed.
