@@ -24,3 +24,20 @@ describe('fallback family-tree layout', () => {
     expect(createFallbackPositions(project)).toEqual({});
   });
 });
+
+import { calculateAutoPositions } from './layout';
+
+describe('ELK layout collision handling', () => {
+  it('keeps disconnected people apart even when ELK places them in the same column', async () => {
+    const project = createEmptyProject();
+    project.people = ['a', 'b', 'c', 'd'].map((id) => ({
+      id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+    }));
+    const positions = await calculateAutoPositions(project);
+    expect(Object.keys(positions).sort()).toEqual(['a', 'b', 'c', 'd']);
+    const coordinates = Object.values(positions).map(({ x, y }) => `${x},${y}`);
+    expect(new Set(coordinates).size).toBe(4);
+    expect(coordinates.map((coordinate) => Number(coordinate.split(',')[0])).sort((a, b) => a - b))
+      .toEqual([0, 224, 448, 672]);
+  });
+});
