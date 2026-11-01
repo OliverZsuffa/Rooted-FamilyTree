@@ -181,4 +181,4 @@ The presentation is resolved: calculated kinship appears as a compact Family con
 
 ## 9. Delivery
 
-Implementation is in progress on `request/004-kinship-labels-and-partnership-lines`. The family-group, kinship, gender, name-history, and partnership routing changes are implemented with domain tests. Run the full CI suite, record the actual result, open a PR, and merge using the previously granted approval only after required checks pass.
+Implementation is complete on `request/004-kinship-labels-and-partnership-lines` and PR #4. CI passed on commit `76b9d4371ac8f5ad9c8bc9903cf36755b183de30`: dependency audit at the configured high severity threshold, TypeScript, all 37 unit tests, Playwright (4 passed and 2 skipped), production build, and PWA verification. The audit still reports 2 low and 8 moderate dependency advisories. Physical Android verification remains outstanding. The user explicitly approved merging.
