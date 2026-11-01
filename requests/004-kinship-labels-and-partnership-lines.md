@@ -53,7 +53,7 @@ Name history should be stored as dated records associated with the relevant marr
 
 ## Scope boundaries
 
-- No redesign of the tree or person editor.
+- Keep the existing visual identity and interaction model. The generation layout may be restructured into explicit family groups to make parentage unambiguous.
 - No accounts, cloud services, or external APIs.
 - No manually entered kinship labels.
 - No automatic name changes when a marriage is created.
@@ -68,3 +68,14 @@ The proposed location for calculated kinship labels is the selected person's det
 ## Delivery workflow
 
 Create and review an implementation plan, then wait for explicit user approval. Implement on a focused branch, add domain and browser tests, update knowledge documentation, and open a pull request. Do not merge or deploy without explicit approval.
+
+
+### Family-group layout
+
+- Organise each generation into family groups based on explicit biological and adoptive parentage, rather than placing every person in one undifferentiated row.
+- Create an invisible family junction for each distinct set of recorded biological and adoptive parents. Connect that junction to the children who share that exact parent set.
+- Keep siblings with the same recorded parent set visually together. If only one parent is recorded, do not invent a second parent or assume an unrecorded partner is a parent.
+- A person with children from multiple partnerships may participate in multiple family groups, but their person card must appear only once. Route each family connection to that single card.
+- Marriage and partnership records alone must never establish parentage or imply shared children.
+- Keep parentage and partnership connectors visually distinct, with separate routing lanes where needed to prevent crossings and card overlap.
+- Filtering and mobile layouts must preserve these rules. Manual horizontal positioning must not change family membership or generation alignment.
