@@ -4,7 +4,7 @@ import {
   Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, ChevronDown, Heart, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
+import { Check, Heart, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { loadProject, saveProject } from './data/database';
@@ -143,7 +143,7 @@ function App() {
     setDialog(null);
   };
 
-  const saveRelationship = (event: React.FormEvent) => {
+  const saveRelationship = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
     const relation = {
