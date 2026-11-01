@@ -280,3 +280,12 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 :root[data-theme="dark"] .welcome-note { color: #a99d8c; }
 :root[data-theme="dark"] .welcome-icon { background: #302d27; }
 :root[data-theme="dark"] .loading-screen { background: var(--paper); }
+
+.person-card-incomplete { border: 1.5px solid #b45b4e; background: #f8e9e4; }
+.person-card-gender { display: inline-block; margin-top: 5px; color: var(--olive); font-size: 9px; letter-spacing: .4px; }
+.family-junction-incomplete { border: 1.5px solid #b45b4e; background: #f8e9e4; color: #a34c40; }
+.incomplete-control { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px !important; }
+.incomplete-control input { width: 15px !important; min-height: 15px !important; accent-color: #a65342; }
+.legacy-name-note { margin: 0; color: var(--brown-soft); font-size: 11px; line-height: 1.5; }
+:root[data-theme="dark"] .person-card-incomplete,
+:root[data-theme="dark"] .family-junction-incomplete { border-color: #e18b7c; background: #49302b; color: #f0b2a5; }

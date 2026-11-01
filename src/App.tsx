@@ -23,7 +23,7 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null }, 'family'>;
+type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null; incomplete: boolean }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -51,7 +51,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded family connection">
+    <div className={['family-junction', data.dimmed && 'family-junction-dimmed', data.incomplete && 'family-junction-incomplete'].filter(Boolean).join(' ')} aria-label={data.incomplete ? 'Incomplete recorded family connection' : 'Recorded family connection'}>
       <Handle type="target" position={Position.Top} />
       {data.symbol && <span className="family-junction-symbol" aria-label={data.symbol === '♥' ? 'Marriage' : 'Partnership'}>{data.symbol}</span>}
       <Handle type="source" position={Position.Bottom} />
@@ -124,6 +124,7 @@ function App() {
   const [newRelativeName, setNewRelativeName] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
   const [relationError, setRelationError] = useState('');
+  const [manualRelationshipIncomplete, setManualRelationshipIncomplete] = useState(false);
   const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -492,10 +493,9 @@ function App() {
           const person = baseProject.people.find((item) => item.id === change.personId);
           if (!person || !change.newName) { setRelationError('Enter the new full name for each person changing their name.'); return; }
           if (person.name !== change.newName) {
-            const effectiveDate = nameChangeDate || partnershipStartDate || null;
-            newNameChanges.push({ personId: person.id, previousName: person.name, newName: change.newName, effectiveDate });
+            newNameChanges.push({ personId: person.id, previousName: person.name, newName: change.newName });
             nameHistoryByPerson.set(person.id, [...(nameHistoryByPerson.get(person.id) ?? []), {
-              id: crypto.randomUUID(), previousName: person.name, newName: change.newName, effectiveDate, partnershipId,
+              id: crypto.randomUUID(), previousName: person.name, newName: change.newName, partnershipId,
             }]);
           }
         }
@@ -511,6 +511,7 @@ function App() {
         type: relationType, person1Id: selectedPerson.id, person2Id: otherPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
         nameChanges: newNameChanges,
+        manualIncomplete: manualRelationshipIncomplete,
       };
       const partnerships = existingPartnership
         ? baseProject.partnerships.map((item) => item.id === partnershipId ? partnership : item)
@@ -524,6 +525,7 @@ function App() {
     const relation = {
       id: editingRelation?.kind === 'parentage' ? editingRelation.id : crypto.randomUUID(),
       type: relationType,
+      manualIncomplete: manualRelationshipIncomplete,
       parentId: relationDirection === 'child' ? selectedPerson.id : otherPersonId,
       childId: relationDirection === 'child' ? otherPersonId : selectedPerson.id,
     };
@@ -556,13 +558,14 @@ function App() {
     setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
     setPartnershipStartDate(relation.startDate ?? '');
     setPartnershipEndDate(relation.endDate ?? '');
+    setManualRelationshipIncomplete(!!relation.manualIncomplete);
     const otherId = relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id;
     const firstChange = relation.nameChanges.find((item) => item.personId === selectedPerson.id);
     const secondChange = relation.nameChanges.find((item) => item.personId === otherId);
     setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
     setFirstNewName(firstChange ? selectedPerson.name : '');
     setSecondNewName(secondChange ? (project.people.find((person) => person.id === otherId)?.name ?? '') : '');
-    setNameChangeDate(firstChange?.effectiveDate ?? secondChange?.effectiveDate ?? '');
+    setNameChangeDate('');
     setRelationError('');
     setDialog('relationship');
   };
@@ -715,7 +718,7 @@ function App() {
                     const marriage = project.partnerships.find((item) => item.id === entry.partnershipId);
                     const otherId = marriage ? (marriage.person1Id === selectedPerson.id ? marriage.person2Id : marriage.person1Id) : null;
                     const otherName = otherId ? project.people.find((person) => person.id === otherId)?.name : null;
-                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{entry.effectiveDate ? ' · ' + entry.effectiveDate : ''}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
+                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
                   })}
                 </div>
               )}
@@ -737,7 +740,7 @@ function App() {
               </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setNameChangeDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setNameChangeDate(''); setManualRelationshipIncomplete(false); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -766,8 +769,8 @@ function App() {
                   </select>
                 </label>
                 <div className="date-fields">
-                  <label>Born<input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
-                  <label>Died<input type="date" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
+                  <label>Born<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
+                  <label>Died<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
                 </div>
                 <div className="attribute-editor">
                   <span className="attribute-heading">Additional details</span>
@@ -804,8 +807,8 @@ function App() {
                 {relationType === 'marriage' || relationType === 'partnership' ? (
                   <>
                     <div className="date-fields">
-                      <label>Started<input type="date" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
-                      <label>Ended<input type="date" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
+                      <label>Started<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
+                      <label>Ended<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
                     </div>
                     {relationType === 'marriage' && (
                       <div className="name-change-editor">
@@ -837,6 +840,7 @@ function App() {
                   </select>
                 </label>
                 {relationPersonId === '__new__' && <label>New person’s name<input autoFocus required value={newRelativeName} onChange={(event) => setNewRelativeName(event.target.value)} placeholder="Full name" /></label>}
+                <label className="incomplete-control"><input type="checkbox" checked={manualRelationshipIncomplete} onChange={(event) => setManualRelationshipIncomplete(event.target.checked)} /> Mark this relationship as incomplete</label>
                 {relationError && <p className="form-error">{relationError}</p>}
                 <button className="primary-button modal-submit" type="submit"><Check size={16} /> Save relationship</button>
               </form>

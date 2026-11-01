@@ -18,9 +18,9 @@ export const nameHistorySchema = z.object({
   id: z.string().min(1),
   previousName: z.string().min(1),
   newName: z.string().min(1),
-  effectiveDate: isoDateSchema.nullable().default(null),
+  effectiveDate: z.unknown().optional(),
   partnershipId: z.string().min(1),
-});
+}).transform(({ effectiveDate: _legacyEffectiveDate, ...entry }) => entry);
 export const personSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(''),
@@ -46,8 +46,8 @@ export const partnershipNameChangeSchema = z.object({
   personId: z.string().min(1),
   previousName: z.string().min(1),
   newName: z.string().min(1),
-  effectiveDate: isoDateSchema.nullable().default(null),
-});
+  effectiveDate: z.unknown().optional(),
+}).transform(({ effectiveDate: _legacyEffectiveDate, ...change }) => change);
 export const partnershipSchema = z.object({
   id: z.string().min(1), type: partnershipTypeSchema,
   person1Id: z.string().min(1), person2Id: z.string().min(1),
