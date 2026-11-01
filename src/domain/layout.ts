@@ -74,17 +74,24 @@ export async function calculateAutoPositions(
   const nodes = graph.children ?? [];
   const minX = nodes.length ? Math.min(...nodes.map((node) => node.x ?? 0)) : 0;
   const laidOut: Record<string, Position> = { ...fallback };
-  for (const node of nodes) {
-    laidOut[node.id] = {
-      x: Math.max(0, (node.x ?? fallback[node.id]?.x ?? 0) - minX),
-      y: node.y ?? fallback[node.id]?.y ?? 0,
-    };
-  }
-
-  // Keep every person in its calculated generation row, even when ELK adds junction layers.
+  const elkX = new Map(nodes.map((node) => [node.id, Math.max(0, (node.x ?? fallback[node.id]?.x ?? 0) - minX)]));
+  const byGeneration = new Map<number, typeof project.people>();
   for (const person of project.people) {
     const generation = generationResult.generations.get(person.id) ?? 0;
-    laidOut[person.id] = { ...laidOut[person.id], y: generation * 220 };
+    byGeneration.set(generation, [...(byGeneration.get(generation) ?? []), person]);
+  }
+  // ELK supplies family-aware ordering. A final collision pass guarantees readable card spacing.
+  for (const [generation, people] of byGeneration) {
+    const ordered = [...people].sort((a, b) => (elkX.get(a.id) ?? 0) - (elkX.get(b.id) ?? 0) || a.id.localeCompare(b.id));
+    let nextAvailableX = 0;
+    for (const person of ordered) {
+      const x = Math.max(elkX.get(person.id) ?? fallback[person.id]?.x ?? 0, nextAvailableX);
+      laidOut[person.id] = { x, y: generation * 220 };
+      nextAvailableX = x + 224;
+    }
+  }
+  for (const node of nodes) {
+    if (node.id.startsWith('family:')) laidOut[node.id] = { x: elkX.get(node.id) ?? fallback[node.id]?.x ?? 0, y: node.y ?? fallback[node.id]?.y ?? 0 };
   }
   for (const group of groups) {
     const parents = group.parentIds.map((id) => laidOut[id]).filter((value): value is Position => !!value);
