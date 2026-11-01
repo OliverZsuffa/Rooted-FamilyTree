@@ -1,30 +1,25 @@
 # Request 010 testing
 
-## Status
+## Implementation status
 
-Not implemented. No tests have been run for this request.
+The recursive layout rewrite has been implemented on `request/010-recursive-family-ordering`. CI verification is pending.
 
-## Planned automated coverage
+## Automated coverage added
 
-- [ ] Simple multigenerational recursive expansion.
-- [ ] Ancestor siblings and collateral descendants.
-- [ ] Full and half sibling associations.
-- [ ] Multiple partnerships and separate exact-parent-set junctions.
-- [ ] Shared children and multiple parent groups.
-- [ ] Multiple discovery paths and pedigree collapse.
-- [ ] Disconnected ancestry components.
-- [ ] Isolated people and incomplete ancestry.
-- [ ] Partnership proximity without parentage inference.
-- [ ] Gender-independent ordering.
-- [ ] Deterministic output across repeated runs.
-- [ ] Exactly one position per person.
-- [ ] Valid family junction positions.
-- [ ] No person-card or junction overlaps.
-- [ ] Manual position precedence and drag persistence.
-- [ ] Existing relationship edge endpoints and types unchanged.
-- [ ] Desktop and mobile browser regression.
+- [x] Simple multigenerational sibling and parent ordering remains covered.
+- [x] Full and half sibling networks remain together.
+- [x] Exact parent-set junctions remain distinct.
+- [x] Ancestor sibling expansion includes cousin branches.
+- [x] Multiple partnerships do not duplicate a person.
+- [x] Partnership-connected ancestry components are kept adjacent without merging their generation calculations.
+- [x] Person and relationship insertion order does not change the resulting positions.
+- [x] Every person receives one position.
+- [x] Cards in the same generation do not overlap.
+- [x] Gender-independent ordering remains covered.
+- [x] Repeated calculations remain deterministic.
+- [x] Invalid ancestry still returns no automatic positions and has a safe flat fallback.
 
-## Planned verification
+## Verification to run
 
 - [ ] TypeScript typecheck.
 - [ ] Full unit and domain tests.
@@ -33,5 +28,6 @@ Not implemented. No tests have been run for this request.
 - [ ] PWA build verification.
 - [ ] Import/export regression tests.
 - [ ] Visual inspection of representative complex family fixtures.
+- [ ] Confirm the automatic layout path no longer calls the old barycentre and crossing-score sweeps.
 
-No implementation or verification claims should be added until the work is approved and performed.
+Do not mark these checks as passed until the corresponding CI results have completed.
