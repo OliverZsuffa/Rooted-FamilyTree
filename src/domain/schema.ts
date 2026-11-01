@@ -1,10 +1,20 @@
 import { z } from 'zod';
 
 export const attributeValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-const isoDateSchema = z.string().refine((value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
+const isoDateSchema = z.string().refine((value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, 'Expected a valid calendar date in YYYY-MM-DD format');
+export const genderSchema = z.enum(['female', 'male', 'nonbinary']).nullable().default(null);
+export const nameHistorySchema = z.object({
+  id: z.string().min(1),
+  previousName: z.string().min(1),
+  newName: z.string().min(1),
+  effectiveDate: isoDateSchema.nullable().default(null),
+  partnershipId: z.string().min(1),
+});
 export const personSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(''),
+  gender: genderSchema,
+  nameHistory: z.array(nameHistorySchema).default([]),
   birthDate: isoDateSchema.nullable().default(null),
   deathDate: isoDateSchema.nullable().default(null),
   attributes: z.record(z.string(), attributeValueSchema).default({}),
@@ -16,10 +26,17 @@ export const parentageSchema = z.object({
   parentId: z.string().min(1), childId: z.string().min(1),
 });
 export const partnershipTypeSchema = z.enum(['marriage', 'partnership']);
+export const partnershipNameChangeSchema = z.object({
+  personId: z.string().min(1),
+  previousName: z.string().min(1),
+  newName: z.string().min(1),
+  effectiveDate: isoDateSchema.nullable().default(null),
+});
 export const partnershipSchema = z.object({
   id: z.string().min(1), type: partnershipTypeSchema,
   person1Id: z.string().min(1), person2Id: z.string().min(1),
   startDate: isoDateSchema.nullable().default(null), endDate: isoDateSchema.nullable().default(null),
+  nameChanges: z.array(partnershipNameChangeSchema).default([]),
 });
 export const pointSchema = z.object({ x: z.number(), y: z.number() });
 export const projectSchema = z.object({
@@ -35,6 +52,9 @@ export type Parentage = z.infer<typeof parentageSchema>;
 export type ParentageType = z.infer<typeof parentageTypeSchema>;
 export type Partnership = z.infer<typeof partnershipSchema>;
 export type PartnershipType = z.infer<typeof partnershipTypeSchema>;
+export type PartnershipNameChange = z.infer<typeof partnershipNameChangeSchema>;
+export type NameHistoryEntry = z.infer<typeof nameHistorySchema>;
+export type Gender = z.infer<typeof genderSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type AttributeValue = z.infer<typeof attributeValueSchema>;
 
