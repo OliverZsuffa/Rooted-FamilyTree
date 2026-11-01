@@ -16,7 +16,7 @@ describe('fallback family-tree layout', () => {
     expect(['a', 'b', 'c', 'd', 'e'].every((id) => positions[id] !== undefined)).toBe(true);
     expect(positions['family:a']).toBeDefined();
     expect(positions['family:c']).toBeDefined();
-    expect(new Set(Object.values(positions).map(({ x, y }) => `${x},${y}`)).size).toBe(5);
+    expect(new Set(Object.values(positions).map(({ x, y }) => `${x},${y}`)).size).toBe(7);
     expect(positions.b.y).toBeGreaterThan(positions.a.y);
     expect(positions.d.y).toBeGreaterThan(positions.c.y);
   });
@@ -33,7 +33,7 @@ describe('ELK layout collision handling', () => {
   it('keeps disconnected people apart even when ELK places them in the same column', async () => {
     const project = createEmptyProject();
     project.people = ['a', 'b', 'c', 'd'].map((id) => ({
-      id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+      id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
     }));
     const positions = await calculateAutoPositions(project);
     expect(Object.keys(positions).sort()).toEqual(['a', 'b', 'c', 'd']);
