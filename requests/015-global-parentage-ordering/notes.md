@@ -1,8 +1,12 @@
 # Request 015 notes
 
-## Status
+## Current implementation status
 
-Planning and algorithm evaluation only. No application code has been changed. The next step is isolated research and prototyping, not production implementation.
+The constrained layered optimiser is implemented in `src/domain/familyTraversal.ts`. It preserves exact-parent-set sibling blocks, treats parentless people as singleton blocks, uses bounded alternating generation sweeps, and accepts only globally improving candidate row orders. The global score minimises adjacent-generation parentage crossings first and edge span second. Crossing counting uses a Fenwick tree to avoid quadratic pair counting.
+
+Regression tests for the corrected CA / AB / BA topology and shared people were added to `src/domain/layout.test.ts`.
+
+The work is proposed in PR #15. Local execution was not possible in the current environment because GitHub could not be reached from the shell, and no PR workflow runs were returned by the repository integration. Type checking, unit tests, browser tests, production build, PWA verification, and visual inspection therefore remain unverified. Do not merge until these checks have been run and the actual family tree has been reviewed.
 
 ## User clarification
 
