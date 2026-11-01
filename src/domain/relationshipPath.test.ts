@@ -33,6 +33,16 @@ describe('relationship path finder', () => {
     });
   });
 
+  it('describes a sibling-in-law when a sibling is partnered with the relative', () => {
+    const project = fixture();
+    project.parentage = [
+      { id: 'shared-a', type: 'biological_parent', parentId: 'parentA', childId: 'childA' },
+      { id: 'shared-b', type: 'biological_parent', parentId: 'parentA', childId: 'childB' },
+    ];
+    project.partnerships = [{ id: 'sibling-marriage', type: 'marriage', person1Id: 'childB', person2Id: 'partner', startDate: null, endDate: null, nameChanges: [] }];
+    expect(findRelationshipPath(project, 'childA', 'partner')?.label).toBe('sibling-in-law');
+  });
+
   it('returns no path for unrelated people', () => {
     expect(findRelationshipPath(fixture(), 'childA', 'unrelated')).toBeNull();
   });
