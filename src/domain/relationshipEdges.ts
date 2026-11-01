@@ -7,6 +7,7 @@ export function buildRelationshipEdges(
   visibleNodeIds: Iterable<string>,
   selectedId: string | null,
   highlightedIds: Set<string>,
+  positions: Record<string, { x: number; y: number }> = {},
 ): Edge[] {
   const visibleIds = new Set(visibleNodeIds);
   const result: Edge[] = [];
@@ -58,8 +59,8 @@ export function buildRelationshipEdges(
       id: partnership.id,
       source: partnership.person1Id,
       target: partnership.person2Id,
-      sourceHandle: 'partnership-right',
-      targetHandle: 'partnership-left',
+      sourceHandle: (positions[partnership.person1Id]?.x ?? 0) <= (positions[partnership.person2Id]?.x ?? 0) ? 'partnership-out-right' : 'partnership-out-left',
+      targetHandle: (positions[partnership.person1Id]?.x ?? 0) <= (positions[partnership.person2Id]?.x ?? 0) ? 'partnership-in-left' : 'partnership-in-right',
       type: 'bezier',
       label: partnership.type === 'marriage' ? '♥' : '♡',
       labelStyle: { fill: '#78805a', fontSize: 13 },
