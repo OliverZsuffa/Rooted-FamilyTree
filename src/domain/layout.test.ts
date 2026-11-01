@@ -122,4 +122,71 @@ describe('family-centred automatic layout', () => {
     ];
     expect(await calculateAutoPositions(invalid)).toEqual({});
   });
+
+  it('keeps multigenerational ancestry branches on consistent sides when input order is interleaved', () => {
+    const project = makeProject(['grandparentA1', 'grandparentB1', 'grandparentA2', 'grandparentB2', 'father', 'mother', 'child']);
+    project.parentage = [
+      { id: 'a1-mother', type: 'biological_parent', parentId: 'grandparentA1', childId: 'mother' },
+      { id: 'a2-mother', type: 'biological_parent', parentId: 'grandparentA2', childId: 'mother' },
+      { id: 'b1-father', type: 'biological_parent', parentId: 'grandparentB1', childId: 'father' },
+      { id: 'b2-father', type: 'biological_parent', parentId: 'grandparentB2', childId: 'father' },
+      { id: 'mother-child', type: 'biological_parent', parentId: 'mother', childId: 'child' },
+      { id: 'father-child', type: 'biological_parent', parentId: 'father', childId: 'child' },
+    ];
+    project.partnerships = [{
+      id: 'parents-partnership',
+      type: 'marriage',
+      person1Id: 'mother',
+      person2Id: 'father',
+      startDate: null,
+      endDate: null,
+      nameChanges: [],
+    }];
+
+    const positions = createFallbackPositions(project);
+    const branchACentre = (centre(positions.grandparentA1) + centre(positions.grandparentA2)) / 2;
+    const branchBCentre = (centre(positions.grandparentB1) + centre(positions.grandparentB2)) / 2;
+    const motherCentre = centre(positions.mother);
+    const fatherCentre = centre(positions.father);
+
+    expect(Math.abs(positions.grandparentA1.x - positions.grandparentA2.x)).toBe(224);
+    expect(Math.abs(positions.grandparentB1.x - positions.grandparentB2.x)).toBe(224);
+    expect(Math.sign(branchACentre - branchBCentre)).toBe(Math.sign(motherCentre - fatherCentre));
+  });
+
+  it('does not use gender to determine branch placement', () => {
+    const project = makeProject(['grandparentA1', 'grandparentB1', 'grandparentA2', 'grandparentB2', 'father', 'mother', 'child']);
+    project.parentage = [
+      { id: 'a1-mother', type: 'biological_parent', parentId: 'grandparentA1', childId: 'mother' },
+      { id: 'a2-mother', type: 'biological_parent', parentId: 'grandparentA2', childId: 'mother' },
+      { id: 'b1-father', type: 'biological_parent', parentId: 'grandparentB1', childId: 'father' },
+      { id: 'b2-father', type: 'biological_parent', parentId: 'grandparentB2', childId: 'father' },
+      { id: 'mother-child', type: 'biological_parent', parentId: 'mother', childId: 'child' },
+      { id: 'father-child', type: 'biological_parent', parentId: 'father', childId: 'child' },
+    ];
+
+    const original = createFallbackPositions(project);
+    project.people.find((person) => person.id === 'mother')!.gender = 'male';
+    project.people.find((person) => person.id === 'father')!.gender = 'female';
+    const changedGender = createFallbackPositions(project);
+
+    expect(changedGender).toEqual(original);
+  });
+
+  it('keeps the same global ordering for repeated calculations', () => {
+    const project = makeProject(['g1', 'g2', 'g3', 'g4', 'p1', 'p2', 'c1', 'c2']);
+    project.parentage = [
+      { id: 'r1', type: 'biological_parent', parentId: 'g1', childId: 'p1' },
+      { id: 'r2', type: 'biological_parent', parentId: 'g2', childId: 'p1' },
+      { id: 'r3', type: 'biological_parent', parentId: 'g3', childId: 'p2' },
+      { id: 'r4', type: 'biological_parent', parentId: 'g4', childId: 'p2' },
+      { id: 'r5', type: 'biological_parent', parentId: 'p1', childId: 'c1' },
+      { id: 'r6', type: 'biological_parent', parentId: 'p2', childId: 'c1' },
+      { id: 'r7', type: 'biological_parent', parentId: 'p1', childId: 'c2' },
+      { id: 'r8', type: 'biological_parent', parentId: 'p2', childId: 'c2' },
+    ];
+
+    expect(createFallbackPositions(project)).toEqual(createFallbackPositions(project));
+  });
+
 });
