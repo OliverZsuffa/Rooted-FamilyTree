@@ -247,9 +247,13 @@ function App() {
     for (const relation of project.parentage) {
       if (directParentIds.has(relation.parentId)) highlighted.add(relation.childId);
     }
-    for (const partnership of project.partnerships) {
-      if (highlighted.has(partnership.person1Id)) highlighted.add(partnership.person2Id);
-      if (highlighted.has(partnership.person2Id)) highlighted.add(partnership.person1Id);
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const partnership of project.partnerships) {
+        if (highlighted.has(partnership.person1Id) && !highlighted.has(partnership.person2Id)) { highlighted.add(partnership.person2Id); expanded = true; }
+        if (highlighted.has(partnership.person2Id) && !highlighted.has(partnership.person1Id)) { highlighted.add(partnership.person1Id); expanded = true; }
+      }
     }
     return highlighted;
   }, [project, selectedId]);
