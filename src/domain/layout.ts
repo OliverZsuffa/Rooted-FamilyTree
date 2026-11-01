@@ -4,90 +4,30 @@ import { getFamilyGroups } from './familyGroups';
 
 type Position = { x: number; y: number };
 
-export function createFallbackPositions(project: Pick<Project, 'people' | 'parentage'>): Record<string, Position> {
-  const generationResult = calculateGenerations(project);
-  const bands = new Map<number, string[]>();
-  for (const person of project.people) {
-    const generation = generationResult.ok ? generationResult.generations.get(person.id) ?? 0 : 0;
-    bands.set(generation, [...(bands.get(generation) ?? []), person.id]);
-  }
-  const positions: Record<string, Position> = {};
-  for (const [generation, ids] of bands) {
-    ids.forEach((id, index) => {
-      positions[id] = { x: index * 240, y: generation * 190 };
-    });
-  }
-  for (const group of getFamilyGroups(project)) {
-    const parents = group.parentIds.map((id) => positions[id]).filter((value): value is Position => !!value);
-    const children = group.childIds.map((id) => positions[id]).filter((value): value is Position => !!value);
-    const points = [...parents, ...children];
-    const parentCenter = parents.length ? parents.reduce((sum, point) => sum + point.x + 88, 0) / parents.length : null;
-    const childCenter = children.length ? children.reduce((sum, point) => sum + point.x + 88, 0) / children.length : null;
-    const x = parentCenter !== null && childCenter !== null ? (parentCenter + childCenter) / 2 - 9 : points.length ? points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9 : 0;
-    const y = parents.length && children.length
-      ? (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35
-      : 0;
-    positions[group.id] = { x, y };
-  }
-  return positions;
-}
+const CARD_WIDTH = 176;
+const CARD_GAP = 48;
+const CARD_PITCH = CARD_WIDTH + CARD_GAP;
+const GENERATION_HEIGHT = 190;
+const JUNCTION_SIZE = 18;
 
-function createElk() {
-  return import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
-}
-
-let elkPromise: ReturnType<typeof createElk> | null = null;
-
-async function getElk() {
-  elkPromise ??= createElk();
-  return elkPromise;
-}
-
-export async function calculateAutoPositions(
+function calculateFamilyCentredPositions(
   project: Pick<Project, 'people' | 'parentage'>,
-): Promise<Record<string, Position>> {
-  const generationResult = calculateGenerations(project);
-  if (!generationResult.ok || project.people.length === 0) return {};
-
-  const fallback = createFallbackPositions(project);
-  const groups = getFamilyGroups(project);
-  const elk = await getElk();
-  const graph = await elk.layout({
-    id: 'rooted-tree',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'DOWN',
-      'elk.spacing.nodeNode': '52',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '90',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.layered.nodePlacement.favorStraightEdges': 'true',
-    },
-    children: [
-      ...project.people.map((person) => ({ id: person.id, width: 176, height: 70 })),
-      ...groups.map((group) => ({ id: group.id, width: 18, height: 18 })),
-    ],
-    edges: groups.flatMap((group) => [
-      ...group.parentIds.map((parentId) => ({ id: group.id + ':parent:' + parentId, sources: [parentId], targets: [group.id] })),
-      ...group.childIds.map((childId) => ({ id: group.id + ':child:' + childId, sources: [group.id], targets: [childId] })),
-    ]),
-  });
-
-  const nodes = graph.children ?? [];
-  const minX = nodes.length ? Math.min(...nodes.map((node) => node.x ?? 0)) : 0;
-  const laidOut: Record<string, Position> = { ...fallback };
-  const elkX = new Map(nodes.map((node) => [node.id, Math.max(0, (node.x ?? fallback[node.id]?.x ?? 0) - minX)]));
+  generations: Map<string, number>,
+): Record<string, Position> {
   const byGeneration = new Map<number, typeof project.people>();
   for (const person of project.people) {
-    const generation = generationResult.generations.get(person.id) ?? 0;
+    const generation = generations.get(person.id) ?? 0;
     byGeneration.set(generation, [...(byGeneration.get(generation) ?? []), person]);
   }
-  // ELK supplies family-aware ordering. A final collision pass guarantees readable card spacing.
-  for (const [generation, people] of byGeneration) {
-    // Cluster people who share a recorded parent so full and half siblings stay adjacent.
-    // Overlapping family groups naturally merge into one soft ordering cluster.
+
+  const positions: Record<string, Position> = {};
+
+  // Parent generations are placed first, allowing each child cluster to use the
+  // actual horizontal centre of its recorded parents as its target.
+  for (const [generation, people] of [...byGeneration.entries()].sort((a, b) => a[0] - b[0])) {
     const generationIds = new Set(people.map((person) => person.id));
     const clusterParent = new Map(people.map((person) => [person.id, person.id]));
+
     const findCluster = (id: string): string => {
       const parent = clusterParent.get(id) ?? id;
       if (parent === id) return id;
@@ -95,10 +35,13 @@ export async function calculateAutoPositions(
       clusterParent.set(id, root);
       return root;
     };
+
     const unionCluster = (first: string, second: string) => {
-      const firstRoot = findCluster(first), secondRoot = findCluster(second);
+      const firstRoot = findCluster(first);
+      const secondRoot = findCluster(second);
       if (firstRoot !== secondRoot) clusterParent.set(secondRoot, firstRoot);
     };
+
     const childrenByParent = new Map<string, string[]>();
     for (const relation of project.parentage) {
       if (relation.type !== 'biological_parent' && relation.type !== 'adoptive_parent') continue;
@@ -107,36 +50,105 @@ export async function calculateAutoPositions(
     }
     for (const siblingIds of childrenByParent.values()) {
       const uniqueIds = [...new Set(siblingIds)];
-      for (let index = 1; index < uniqueIds.length; index += 1) unionCluster(uniqueIds[0], uniqueIds[index]);
+      for (let index = 1; index < uniqueIds.length; index += 1) {
+        unionCluster(uniqueIds[0], uniqueIds[index]);
+      }
     }
+
+    const originalOrder = new Map(people.map((person, index) => [person.id, index]));
     const clusters = new Map<string, typeof people>();
     for (const person of people) {
       const root = findCluster(person.id);
       clusters.set(root, [...(clusters.get(root) ?? []), person]);
     }
-    const ordered = [...clusters.values()]
-      .map((cluster) => cluster.sort((a, b) => (elkX.get(a.id) ?? 0) - (elkX.get(b.id) ?? 0) || a.id.localeCompare(b.id)))
-      .sort((a, b) => Math.min(...a.map((person) => elkX.get(person.id) ?? 0)) - Math.min(...b.map((person) => elkX.get(person.id) ?? 0)) || a[0].id.localeCompare(b[0].id))
-      .flat();
-    let nextAvailableX = 0;
-    for (const person of ordered) {
-      const x = Math.max(elkX.get(person.id) ?? fallback[person.id]?.x ?? 0, nextAvailableX);
-      laidOut[person.id] = { x, y: generation * 190 };
-      nextAvailableX = x + 224;
-    }
-  }
-  for (const node of nodes) {
-    if (node.id.startsWith('family:')) laidOut[node.id] = { x: elkX.get(node.id) ?? fallback[node.id]?.x ?? 0, y: node.y ?? fallback[node.id]?.y ?? 0 };
-  }
-  for (const group of groups) {
-    const parents = group.parentIds.map((id) => laidOut[id]).filter((value): value is Position => !!value);
-    const children = group.childIds.map((id) => laidOut[id]).filter((value): value is Position => !!value);
-    if (parents.length && children.length) {
-      laidOut[group.id] = {
-        x: ((parents.reduce((sum, point) => sum + point.x + 88, 0) / parents.length) + (children.reduce((sum, point) => sum + point.x + 88, 0) / children.length)) / 2 - 9,
-        y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
+
+    const positionedClusters = [...clusters.values()].map((members) => {
+      const parentIds = new Set<string>();
+      for (const child of members) {
+        for (const relation of project.parentage) {
+          if (relation.childId === child.id
+            && (relation.type === 'biological_parent' || relation.type === 'adoptive_parent')) {
+            parentIds.add(relation.parentId);
+          }
+        }
+      }
+      const parentCentres = [...parentIds]
+        .map((id) => positions[id])
+        .filter((position): position is Position => !!position)
+        .map((position) => position.x + CARD_WIDTH / 2);
+      const targetCentre = parentCentres.length
+        ? parentCentres.reduce((sum, value) => sum + value, 0) / parentCentres.length
+        : null;
+      return {
+        members,
+        targetCentre,
+        firstIndex: Math.min(...members.map((person) => originalOrder.get(person.id) ?? 0)),
+        width: members.length * CARD_WIDTH + (members.length - 1) * CARD_GAP,
       };
+    }).sort((a, b) => {
+      if (a.targetCentre !== null && b.targetCentre !== null) {
+        return a.targetCentre - b.targetCentre || a.firstIndex - b.firstIndex;
+      }
+      if (a.targetCentre !== null) return -1;
+      if (b.targetCentre !== null) return 1;
+      return a.firstIndex - b.firstIndex;
+    });
+
+    let nextAvailableX: number | null = null;
+    for (const cluster of positionedClusters) {
+      const desiredLeft = cluster.targetCentre === null
+        ? nextAvailableX === null ? 0 : nextAvailableX + CARD_GAP
+        : cluster.targetCentre - cluster.width / 2;
+      const left: number = nextAvailableX === null ? desiredLeft : Math.max(desiredLeft, nextAvailableX + CARD_GAP);
+      cluster.members.forEach((person, index) => {
+        positions[person.id] = {
+          x: left + index * CARD_PITCH,
+          y: generation * GENERATION_HEIGHT,
+        };
+      });
+      nextAvailableX = left + cluster.width;
     }
   }
-  return laidOut;
+
+  // Shift the whole tree together. This preserves every parent/child alignment.
+  const personPositions = project.people.map((person) => positions[person.id]).filter((position): position is Position => !!position);
+  const minX = personPositions.length ? Math.min(...personPositions.map((position) => position.x)) : 0;
+  if (minX !== 0) {
+    for (const person of project.people) {
+      if (positions[person.id]) positions[person.id].x -= minX;
+    }
+  }
+
+  // Each exact parent set has its own junction, even when children also share
+  // one parent with children from another partnership.
+  for (const group of getFamilyGroups(project)) {
+    const parents = group.parentIds.map((id) => positions[id]).filter((position): position is Position => !!position);
+    const children = group.childIds.map((id) => positions[id]).filter((position): position is Position => !!position);
+    if (!parents.length || !children.length) continue;
+
+    const parentCentre = parents.reduce((sum, position) => sum + position.x + CARD_WIDTH / 2, 0) / parents.length;
+    const childCentre = children.reduce((sum, position) => sum + position.x + CARD_WIDTH / 2, 0) / children.length;
+    positions[group.id] = {
+      x: (parentCentre + childCentre) / 2 - JUNCTION_SIZE / 2,
+      y: (Math.max(...parents.map((position) => position.y)) + Math.min(...children.map((position) => position.y))) / 2 + 35,
+    };
+  }
+
+  return positions;
+}
+
+export function createFallbackPositions(project: Pick<Project, 'people' | 'parentage'>): Record<string, Position> {
+  const generationResult = calculateGenerations(project);
+  const generations = generationResult.ok
+    ? generationResult.generations
+    : new Map(project.people.map((person) => [person.id, 0]));
+  return calculateFamilyCentredPositions(project, generations);
+}
+
+export async function calculateAutoPositions(
+  project: Pick<Project, 'people' | 'parentage'>,
+): Promise<Record<string, Position>> {
+  const generationResult = calculateGenerations(project);
+  if (!generationResult.ok || project.people.length === 0) return {};
+  return calculateFamilyCentredPositions(project, generationResult.generations);
 }
