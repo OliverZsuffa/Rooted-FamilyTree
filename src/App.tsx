@@ -60,12 +60,11 @@ function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   );
 }
 function FamilyRouteEdge(props: EdgeProps) {
-  const lane = Number((props.data as { routeLane?: number } | undefined)?.routeLane ?? 0);
   const [path] = getSmoothStepPath({
     sourceX: props.sourceX, sourceY: props.sourceY,
     targetX: props.targetX, targetY: props.targetY,
     sourcePosition: props.sourcePosition, targetPosition: props.targetPosition,
-    offset: 24 + lane * 14, borderRadius: 10,
+    offset: 8, borderRadius: 4,
   });
   return <BaseEdge id={props.id} path={path} style={props.style} />;
 }
