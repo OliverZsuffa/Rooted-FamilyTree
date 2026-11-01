@@ -28,6 +28,13 @@ describe('project schema', () => {
     }
   });
 
+  it('accepts and discards legacy name change effective dates', () => {
+    const legacy = { ...createEmptyProject(), people: [{ id: 'p', name: 'Person', nameHistory: [{ id: 'h', previousName: 'Old', newName: 'New', effectiveDate: '2001-02-03', partnershipId: 'm' }] }], partnerships: [{ id: 'm', type: 'marriage', person1Id: 'p', person2Id: 'q', nameChanges: [{ personId: 'p', previousName: 'Old', newName: 'New', effectiveDate: '2001-02-03' }] }] };
+    const parsed = projectSchema.parse(legacy);
+    expect(parsed.people[0].nameHistory[0]).not.toHaveProperty('effectiveDate');
+    expect(parsed.partnerships[0].nameChanges[0]).not.toHaveProperty('effectiveDate');
+  });
+
   it('retains structured name and manual completeness fields when supplied', () => {
     const parsed = projectSchema.parse({ ...createEmptyProject(), people: [{
       id: 'p', name: 'A B', firstName: 'A', middleName: '', lastName: 'B', manualIncomplete: true,
