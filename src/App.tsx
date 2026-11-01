@@ -14,6 +14,8 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 
 type PersonNodeData = { person: Person; selected: boolean };
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
+type JunctionFlowNode = Node<{ symbol: string }, 'junction'>;
+type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
@@ -27,7 +29,16 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
     </div>
   );
 }
-const nodeTypes = { person: PersonCard };
+function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
+  return (
+    <div className="partnership-junction" aria-label="Partnership">
+      <Handle type="target" position={Position.Top} />
+      <span>{data.symbol}</span>
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+const nodeTypes = { person: PersonCard, junction: JunctionCard };
 const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'biological_parent', label: 'Biological parent' },
   { value: 'adoptive_parent', label: 'Adoptive parent' },
@@ -125,31 +136,79 @@ function App() {
 
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
   const generations = useMemo(() => project ? calculateGenerations(project) : null, [project]);
-  const nodes = useMemo<PersonFlowNode[]>(() => {
+  const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = Object.keys(autoPositions).length ? autoPositions : arrange(project);
-    return project.people
-      .filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()))
-      .map((person) => ({
-        id: person.id, type: 'person', position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
-        data: { person, selected: person.id === selectedId },
-      }));
+    const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()));
+    const visibleIds = new Set(visiblePeople.map((person) => person.id));
+    const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
+      id: person.id, type: 'person',
+      position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
+      data: { person, selected: person.id === selectedId },
+    }));
+    const junctionNodes: JunctionFlowNode[] = [];
+    const generationResult = calculateGenerations(project);
+    for (const partnership of project.partnerships) {
+      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
+        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
+      if (!sharedChildren.length || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
+      const first = project.layout.manualPositions[partnership.person1Id] ?? automatic[partnership.person1Id] ?? { x: 0, y: 0 };
+      const second = project.layout.manualPositions[partnership.person2Id] ?? automatic[partnership.person2Id] ?? { x: 0, y: 0 };
+      const childGeneration = generationResult.ok ? generationResult.generations.get(sharedChildren[0].childId) ?? 1 : 1;
+      junctionNodes.push({
+        id: 'junction:' + partnership.id, type: 'junction',
+        position: { x: (first.x + second.x) / 2 + 76, y: (childGeneration - 1) * 190 + 95 },
+        data: { symbol: partnership.type === 'marriage' ? '♥' : '♡' },
+        draggable: false, selectable: false,
+      });
+    }
+    return [...personNodes, ...junctionNodes];
   }, [project, selectedId, search, autoPositions]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    return [
-      ...project.parentage.map((relation) => ({
+    const visibleIds = new Set(nodes.map((node) => node.id));
+    const result: Edge[] = [];
+    const consumedParentage = new Set<string>();
+    for (const partnership of project.partnerships) {
+      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
+        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
+      const junctionId = 'junction:' + partnership.id;
+      if (sharedChildren.length && visibleIds.has(junctionId)) {
+        const firstRelation = sharedChildren[0];
+        const secondRelation = project.parentage.find((relation) => relation.childId === firstRelation.childId && relation.parentId === partnership.person2Id);
+        if (secondRelation) {
+          consumedParentage.add(firstRelation.id);
+          consumedParentage.add(secondRelation.id);
+          result.push(
+            { id: partnership.id + ':first', source: partnership.person1Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
+            { id: partnership.id + ':second', source: partnership.person2Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
+          );
+        }
+        for (const child of sharedChildren) {
+          const partnerRelation = project.parentage.find((relation) => relation.childId === child.childId && relation.parentId === partnership.person2Id);
+          if (!partnerRelation) continue;
+          consumedParentage.add(child.id);
+          consumedParentage.add(partnerRelation.id);
+          result.push({ id: partnership.id + ':child:' + child.childId, source: junctionId, target: child.childId, type: 'smoothstep', style: { stroke: '#8b765e', strokeWidth: 1.5 } });
+        }
+      } else if (!sharedChildren.length) {
+        result.push({
+          id: partnership.id, source: partnership.person1Id, target: partnership.person2Id,
+          type: 'straight', label: partnership.type === 'marriage' ? '♥' : '♡',
+          labelStyle: { fill: '#78805a', fontSize: 13 }, style: { stroke: '#78805a', strokeWidth: 1.5 },
+        });
+      }
+    }
+    for (const relation of project.parentage) {
+      if (consumedParentage.has(relation.id)) continue;
+      result.push({
         id: relation.id, source: relation.parentId, target: relation.childId,
         type: 'smoothstep', animated: false,
         style: { stroke: relation.type === 'biological_parent' ? '#8b765e' : '#a99a83', strokeWidth: 1.5, strokeDasharray: relation.type === 'guardian' || relation.type === 'step_parent' ? '5 4' : undefined },
-      })),
-      ...project.partnerships.map((relation) => ({
-        id: relation.id, source: relation.person1Id, target: relation.person2Id,
-        type: 'straight', label: relation.type === 'marriage' ? '♥' : '♡', labelStyle: { fill: '#78805a', fontSize: 13 },
-        style: { stroke: '#78805a', strokeWidth: 1.5 },
-      })),
-    ];
-  }, [project]);
+      });
+    }
+    return result.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+  }, [project, nodes]);
 
   const exportProject = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
@@ -252,7 +311,7 @@ function App() {
     setSelectedId(null);
   };
 
-  const onNodesChange = useCallback((changes: NodeChange<PersonFlowNode>[]) => {
+  const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
     const moved = changes.filter((change) => change.type === 'position' && change.position);
     if (!moved.length) return;
     setProject((current) => {
@@ -308,7 +367,7 @@ function App() {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
-            onNodeClick={(_event, node) => setSelectedId(node.id)}
+            onNodeClick={(_event, node) => { if (project.people.some((person) => person.id === node.id)) setSelectedId(node.id); }}
             onPaneClick={() => setSelectedId(null)}
             onNodesChange={onNodesChange}
             fitView
