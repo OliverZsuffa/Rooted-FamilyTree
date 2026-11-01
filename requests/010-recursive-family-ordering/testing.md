@@ -26,11 +26,11 @@ The recursive layout rewrite is implemented on `request/010-recursive-family-ord
 
 ## CI verification
 
-Latest pull request workflow run: [Run #364](https://github.com/OliverZsuffa/Rooted-FamilyTree/actions/runs/41341144498).
+Latest pull request workflow run: [Run #369](https://github.com/OliverZsuffa/Rooted-FamilyTree/actions/runs/41341544213).
 
 - [x] TypeScript typecheck passed.
 - [x] Unit tests passed: 68 tests across 10 files.
-- [x] Playwright passed: 14 tests, 2 existing project-specific skips. The new recursive cousin ordering test passed on desktop and mobile Chromium.
+- [x] Playwright passed: 14 tests, 2 existing project-specific skips. The new recursive cousin ordering test passed on desktop and mobile Chromium. Its timeout is 60 seconds to accommodate slower parallel CI runs.
 - [x] Production build passed.
 - [x] PWA build verification passed.
 - [x] Dependency audit passed at the configured high severity threshold.
