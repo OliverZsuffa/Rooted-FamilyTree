@@ -2,7 +2,7 @@
 
 ## Status
 
-Awaiting explicit approval. No application code is to be changed until the user approves this plan.
+Approved by the user on 2026-11-01. Implemented on branch `request/008-global-family-cohesion` and submitted as PR #8. GitHub Actions run 320 passed all configured checks. Do not merge to `main` without separate explicit approval.
 
 ## 1. Inspect the current global layout pipeline
 
