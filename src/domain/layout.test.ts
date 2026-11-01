@@ -154,6 +154,25 @@ describe('recursive family layout', () => {
     expect(Math.sign(branchACentre - branchBCentre)).toBe(Math.sign(motherCentre - fatherCentre));
   });
 
+  it('places a shared parent before partner branches and keeps each child branch together', () => {
+    const project = makeProject(['shared', 'partnerA', 'partnerB', 'childA', 'childB1', 'childB2']);
+    project.parentage = [
+      { id: 'shared-a', type: 'biological_parent', parentId: 'shared', childId: 'childA' },
+      { id: 'partner-a', type: 'biological_parent', parentId: 'partnerA', childId: 'childA' },
+      { id: 'shared-b1', type: 'biological_parent', parentId: 'shared', childId: 'childB1' },
+      { id: 'partner-b1', type: 'biological_parent', parentId: 'partnerB', childId: 'childB1' },
+      { id: 'shared-b2', type: 'biological_parent', parentId: 'shared', childId: 'childB2' },
+      { id: 'partner-b2', type: 'biological_parent', parentId: 'partnerB', childId: 'childB2' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    const topOrder = ['shared', 'partnerA', 'partnerB'].sort((a, b) => positions[a].x - positions[b].x);
+    const childOrder = ['childA', 'childB1', 'childB2'].sort((a, b) => positions[a].x - positions[b].x);
+
+    expect(topOrder).toEqual(['shared', 'partnerA', 'partnerB']);
+    expect(childOrder).toEqual(['childA', 'childB1', 'childB2']);
+  });
+
   it('does not use gender to determine branch placement', () => {
     const project = makeProject(['grandparentA1', 'grandparentB1', 'grandparentA2', 'grandparentB2', 'father', 'mother', 'child']);
     project.parentage = [
