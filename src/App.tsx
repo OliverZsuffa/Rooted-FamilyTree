@@ -235,7 +235,9 @@ function App() {
     ...project.people.map((person) => person.id).sort(),
     '|',
     ...project.parentage.map((relation) => `${relation.id}:${relation.parentId}:${relation.childId}:${relation.type}`).sort(),
-  ].join('|') : '', [project?.id, project?.people, project?.parentage]);
+    '|',
+    ...project.partnerships.map((partnership) => `${partnership.id}:${partnership.person1Id}:${partnership.person2Id}`).sort(),
+  ].join('|') : '', [project?.id, project?.people, project?.parentage, project?.partnerships]);
 
   useEffect(() => {
     if (!project) return;
