@@ -24,7 +24,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
   return (
-    <div className={`person-card ${data.selected ? 'person-card-selected' : ''}`}>
+    <div className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}>
       <Handle type="target" position={Position.Top} />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
@@ -35,7 +35,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className="partnership-junction" aria-label="Partnership">
+    <div className={data.dimmed ? 'partnership-junction partnership-junction-dimmed' : 'partnership-junction'} aria-label="Partnership">
       <Handle type="target" position={Position.Top} />
       <span>{data.symbol}</span>
       <Handle type="source" position={Position.Bottom} />
@@ -242,6 +242,10 @@ function App() {
       for (const relation of project.parentage) {
         if (relation.parentId === current && !highlighted.has(relation.childId)) descendants.push(relation.childId);
       }
+    }
+    const directParentIds = new Set(project.parentage.filter((relation) => relation.childId === selectedId).map((relation) => relation.parentId));
+    for (const relation of project.parentage) {
+      if (directParentIds.has(relation.parentId)) highlighted.add(relation.childId);
     }
     for (const partnership of project.partnerships) {
       if (highlighted.has(partnership.person1Id)) highlighted.add(partnership.person2Id);
