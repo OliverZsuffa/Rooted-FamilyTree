@@ -2,7 +2,7 @@
 
 ## Current status
 
-Oliver approved the implementation plan. The initial functional application is being built on `request/001-rooted-family-tree`. The latest GitHub Actions checks are being monitored. No deployment or merge has been performed.
+Oliver approved the implementation plan. The initial functional application is being built on `request/001-rooted-family-tree`. The latest GitHub Actions run completed successfully. No deployment or merge has been performed.
 
 ## Repository
 
@@ -35,8 +35,9 @@ Oliver approved the implementation plan. The initial functional application is b
 - GitHub Actions runs dependency security checks, typecheck, unit tests, production build, and PWA path verification.
 - The dependency audit passes the high severity threshold. Ten low or moderate advisories remain in transitive build tooling and should be reviewed separately.
 - Several earlier runs exposed issues which were fixed on the request branch.
-- A completed verification run passed type checking, all 19 then current unit tests, and the Vite 8 production build. A later test adds one more validation case and is awaiting its current run.
-- The latest checks must be confirmed before declaring the implementation verified.
+- Latest completed run: type checking passed, all 20 unit tests passed, the Vite 8 production build passed, and the automated PWA project path check passed.
+- The high severity dependency audit passed. Ten low or moderate advisories remain in transitive build tooling.
+- The latest automated checks are green.
 - No local browser test has been performed.
 - The first GitHub Pages deployment has not been performed.
 - Installability and offline behaviour still require manual verification on the deployed app.
