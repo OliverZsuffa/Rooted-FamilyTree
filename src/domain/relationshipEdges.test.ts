@@ -5,7 +5,7 @@ import { buildRelationshipEdges } from './relationshipEdges';
 function fixture(): Project {
   const project = createEmptyProject();
   project.people = ['a', 'b', 'c', 'd', 'e'].map((id) => ({
-    id, name: id, birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
+    id, name: id, gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null,
   }));
   return project;
 }
@@ -19,7 +19,7 @@ describe('relationship edge construction', () => {
       { id: 'step', type: 'step_parent', parentId: 'd', childId: 'b' },
       { id: 'guardian', type: 'guardian', parentId: 'e', childId: 'c' },
     ];
-    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'c', person2Id: 'd', startDate: null, endDate: null }];
+    project.partnerships = [{ id: 'marriage', type: 'marriage', person1Id: 'c', person2Id: 'd', startDate: null, endDate: null, nameChanges: [] }];
     const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e'], null, new Set());
     expect(edges.map((edge) => edge.id).sort()).toEqual(['adopt', 'bio', 'guardian', 'marriage', 'step']);
     expect(edges.find((edge) => edge.id === 'step')?.style).toMatchObject({ strokeDasharray: '5 4' });
