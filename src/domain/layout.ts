@@ -70,7 +70,7 @@ function groupPartnerConnectedComponents(
   return groups.sort((first, second) => compareIds(first[0].key, second[0].key));
 }
 
-function calculateFamilyJunctionPositions(
+export function calculateFamilyJunctionPositions(
   project: LayoutProject,
   positions: Record<string, Position>,
 ): void {
