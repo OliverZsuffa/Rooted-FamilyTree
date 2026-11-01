@@ -7,6 +7,7 @@ import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Search, Sprout, Trash2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
+import { calculateAutoPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { projectSchema } from './domain/schema';
 import { useRegisterSW } from 'virtual:pwa-register/react';
@@ -65,6 +66,7 @@ function arrange(project: Project): Record<string, { x: number; y: number }> {
 
 function App() {
   const [project, setProject] = useState<Project | null>(null);
+  const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [storageReady, setStorageReady] = useState(false);
   const [saveState, setSaveState] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -110,18 +112,29 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [project, storageReady]);
 
+  useEffect(() => {
+    if (!project) return;
+    let active = true;
+    calculateAutoPositions(project).then((positions) => {
+      if (active && Object.keys(positions).length) setAutoPositions(positions);
+    }).catch(() => {
+      if (active) setAutoPositions(arrange(project));
+    });
+    return () => { active = false; };
+  }, [project?.people, project?.parentage]);
+
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
   const generations = useMemo(() => project ? calculateGenerations(project) : null, [project]);
   const nodes = useMemo<PersonFlowNode[]>(() => {
     if (!project) return [];
-    const automatic = arrange(project);
+    const automatic = Object.keys(autoPositions).length ? autoPositions : arrange(project);
     return project.people
       .filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()))
       .map((person) => ({
         id: person.id, type: 'person', position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
         data: { person, selected: person.id === selectedId },
       }));
-  }, [project, selectedId, search]);
+  }, [project, selectedId, search, autoPositions]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
     return [
