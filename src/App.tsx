@@ -391,15 +391,15 @@ function App() {
       parentId: relationDirection === 'child' ? selectedPerson.id : otherPersonId,
       childId: relationDirection === 'child' ? otherPersonId : selectedPerson.id,
     };
-    const baseProject = editingRelation?.kind === 'parentage'
+    const validationProject = editingRelation?.kind === 'parentage'
       ? { ...baseProject, parentage: baseProject.parentage.filter((item) => item.id !== editingRelation.id) }
       : baseProject;
-    const error = validateParentage(baseProject, relation);
+    const error = validateParentage(validationProject, relation);
     if (error) { setRelationError(error); return; }
     const parentage = editingRelation?.kind === 'parentage'
-      ? baseProject.parentage.map((item) => item.id === editingRelation.id ? relation : item)
-      : [...baseProject.parentage, relation];
-    commitProject(syncGenerationRows({ ...project, parentage }));
+      ? validationProject.parentage.map((item) => item.id === editingRelation.id ? relation : item)
+      : [...validationProject.parentage, relation];
+    commitProject(syncGenerationRows({ ...baseProject, parentage }));
     setDialog(null);
     setEditingRelation(null);
     setRelationError('');
