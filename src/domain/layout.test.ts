@@ -14,7 +14,7 @@ function centre(position: { x: number }) {
   return position.x + 88;
 }
 
-describe('family-centred automatic layout', () => {
+describe('recursive family layout', () => {
   it('centres a sibling group beneath the midpoint between two parents', () => {
     const project = makeProject(['parentA', 'parentB', 'childA', 'childB', 'childC']);
     project.parentage = project.people.slice(2).flatMap((child) => [
@@ -187,6 +187,130 @@ describe('family-centred automatic layout', () => {
     ];
 
     expect(createFallbackPositions(project)).toEqual(createFallbackPositions(project));
+  });
+
+  it('expands an ancestor sibling group downwards to include cousin branches', () => {
+    const project = makeProject(['grandparentA', 'grandparentB', 'parent', 'uncle', 'child', 'cousin']);
+    project.parentage = [
+      { id: 'a-parent', type: 'biological_parent', parentId: 'grandparentA', childId: 'parent' },
+      { id: 'b-parent', type: 'biological_parent', parentId: 'grandparentB', childId: 'parent' },
+      { id: 'a-uncle', type: 'biological_parent', parentId: 'grandparentA', childId: 'uncle' },
+      { id: 'b-uncle', type: 'biological_parent', parentId: 'grandparentB', childId: 'uncle' },
+      { id: 'parent-child', type: 'biological_parent', parentId: 'parent', childId: 'child' },
+      { id: 'uncle-cousin', type: 'biological_parent', parentId: 'uncle', childId: 'cousin' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    expect(Math.abs(positions.parent.x - positions.uncle.x)).toBe(224);
+    expect(Math.abs(positions.child.x - positions.cousin.x)).toBe(224);
+    expect(positions.child.y).toBe(positions.cousin.y);
+  });
+
+  it('keeps a person with children from multiple partnerships in one position', () => {
+    const project = makeProject(['parent', 'partnerA', 'partnerB', 'childA', 'childB']);
+    project.parentage = [
+      { id: 'p-a', type: 'biological_parent', parentId: 'parent', childId: 'childA' },
+      { id: 'a-a', type: 'biological_parent', parentId: 'partnerA', childId: 'childA' },
+      { id: 'p-b', type: 'biological_parent', parentId: 'parent', childId: 'childB' },
+      { id: 'b-b', type: 'biological_parent', parentId: 'partnerB', childId: 'childB' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    expect(positions.parent).toBeDefined();
+    expect(Object.keys(positions).filter((id) => id === 'parent')).toHaveLength(1);
+    expect(Math.abs(positions.childA.x - positions.childB.x)).toBe(224);
+    expect(positions['family:parent|partnerA']).toBeDefined();
+    expect(positions['family:parent|partnerB']).toBeDefined();
+  });
+
+  it('keeps partnership-connected ancestry components adjacent without merging their generations', () => {
+    const project = makeProject(['aParent', 'aChild', 'middleParent', 'middleChild', 'zParent', 'zChild']);
+    project.parentage = [
+      { id: 'a', type: 'biological_parent', parentId: 'aParent', childId: 'aChild' },
+      { id: 'm', type: 'biological_parent', parentId: 'middleParent', childId: 'middleChild' },
+      { id: 'z', type: 'biological_parent', parentId: 'zParent', childId: 'zChild' },
+    ];
+    project.partnerships = [{
+      id: 'a-z-partnership',
+      type: 'partnership',
+      person1Id: 'aChild',
+      person2Id: 'zChild',
+      startDate: null,
+      endDate: null,
+      nameChanges: [],
+    }];
+
+    const positions = createFallbackPositions(project);
+    expect(Math.abs(positions.aChild.x - positions.zChild.x)).toBe(224);
+    expect(positions.aChild.y).toBe(positions.zChild.y);
+    expect(positions.middleChild.x).not.toBe(positions.aChild.x);
+  });
+
+  it('does not depend on person or relationship insertion order', () => {
+    const project = makeProject(['gA', 'gB', 'parentA', 'parentB', 'uncle', 'child', 'cousin']);
+    project.parentage = [
+      { id: '1', type: 'biological_parent', parentId: 'gA', childId: 'parentA' },
+      { id: '2', type: 'biological_parent', parentId: 'gB', childId: 'parentA' },
+      { id: '3', type: 'biological_parent', parentId: 'gA', childId: 'uncle' },
+      { id: '4', type: 'biological_parent', parentId: 'gB', childId: 'uncle' },
+      { id: '5', type: 'biological_parent', parentId: 'parentA', childId: 'child' },
+      { id: '6', type: 'biological_parent', parentId: 'uncle', childId: 'cousin' },
+    ];
+    const original = createFallbackPositions(project);
+    const permuted = {
+      ...project,
+      people: [...project.people].reverse(),
+      parentage: [...project.parentage].reverse(),
+    };
+    expect(createFallbackPositions(permuted)).toEqual(original);
+  });
+
+  it('places every person exactly once and never overlaps cards in a generation', () => {
+    const project = makeProject(['g1', 'g2', 'p1', 'p2', 'p3', 'c1', 'c2', 'c3', 'isolated']);
+    project.parentage = [
+      { id: '1', type: 'biological_parent', parentId: 'g1', childId: 'p1' },
+      { id: '2', type: 'biological_parent', parentId: 'g2', childId: 'p1' },
+      { id: '3', type: 'biological_parent', parentId: 'g1', childId: 'p2' },
+      { id: '4', type: 'biological_parent', parentId: 'g2', childId: 'p2' },
+      { id: '5', type: 'biological_parent', parentId: 'p1', childId: 'c1' },
+      { id: '6', type: 'biological_parent', parentId: 'p2', childId: 'c1' },
+      { id: '7', type: 'biological_parent', parentId: 'p2', childId: 'c2' },
+      { id: '8', type: 'biological_parent', parentId: 'p3', childId: 'c3' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    for (const person of project.people) expect(positions[person.id]).toBeDefined();
+    expect(new Set(project.people.map((person) => person.id)).size).toBe(project.people.length);
+    const rows = new Map<number, number[]>();
+    for (const person of project.people) {
+      const y = positions[person.id].y;
+      rows.set(y, [...(rows.get(y) ?? []), positions[person.id].x]);
+    }
+    for (const xs of rows.values()) {
+      const ordered = xs.sort((a, b) => a - b);
+      for (let index = 1; index < ordered.length; index += 1) {
+        expect(ordered[index] - ordered[index - 1]).toBeGreaterThanOrEqual(176);
+      }
+    }
+  });
+
+  it('handles pedigree collapse without duplicating a shared ancestor or descendant', () => {
+    const project = makeProject(['ancestorA', 'ancestorB', 'parentA', 'parentB', 'child']);
+    project.parentage = [
+      { id: 'a-pa', type: 'biological_parent', parentId: 'ancestorA', childId: 'parentA' },
+      { id: 'b-pa', type: 'biological_parent', parentId: 'ancestorB', childId: 'parentA' },
+      { id: 'a-pb', type: 'biological_parent', parentId: 'ancestorA', childId: 'parentB' },
+      { id: 'b-pb', type: 'biological_parent', parentId: 'ancestorB', childId: 'parentB' },
+      { id: 'pa-child', type: 'biological_parent', parentId: 'parentA', childId: 'child' },
+      { id: 'pb-child', type: 'biological_parent', parentId: 'parentB', childId: 'child' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    for (const person of project.people) expect(positions[person.id]).toBeDefined();
+    expect(new Set(project.people.map((person) => person.id)).size).toBe(project.people.length);
+    expect(Math.abs(positions.parentA.x - positions.parentB.x)).toBe(224);
+    expect(positions.child.y).toBe(positions.parentA.y + 190);
+    expect(Object.keys(positions).filter((id) => id === 'ancestorA')).toHaveLength(1);
   });
 
 });

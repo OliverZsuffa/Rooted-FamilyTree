@@ -233,3 +233,47 @@ test('creates, edits, and reloads a person with only a first name', async ({ pag
   await reloaded.click();
   await expect(page.locator('.person-panel h2')).toHaveText('Onlyfirst');
 });
+
+async function addParentChild(page: import('@playwright/test').Page, parent: string, child: string) {
+  await page.locator('.react-flow__node-person').filter({ hasText: parent }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Connect to').selectOption({ label: child });
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+  await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
+}
+
+test('keeps cousin branches aligned through recursive ancestor expansion', async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto('/');
+  for (const name of ['Grandparent One', 'Grandparent Two', 'Parent Branch', 'Uncle Branch', 'Child Branch', 'Cousin Branch']) {
+    await addPerson(page, name);
+  }
+
+  await addParentChild(page, 'Grandparent One', 'Parent Branch');
+  await addParentChild(page, 'Grandparent Two', 'Parent Branch');
+  await addParentChild(page, 'Grandparent One', 'Uncle Branch');
+  await addParentChild(page, 'Grandparent Two', 'Uncle Branch');
+  await addParentChild(page, 'Parent Branch', 'Child Branch');
+  await addParentChild(page, 'Uncle Branch', 'Cousin Branch');
+
+  const nodePosition = async (name: string) => page.locator('.react-flow__node-person')
+    .filter({ hasText: name })
+    .evaluate((element) => {
+      const match = (element as HTMLElement).style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+      if (!match) throw new Error('Could not read the rendered node position');
+      return { x: Number(match[1]), y: Number(match[2]) };
+    });
+  const parent = await nodePosition('Parent Branch');
+  const uncle = await nodePosition('Uncle Branch');
+  const child = await nodePosition('Child Branch');
+  const cousin = await nodePosition('Cousin Branch');
+
+  const ancestorOrder = Math.sign(parent.x - uncle.x);
+  const descendantOrder = Math.sign(child.x - cousin.x);
+  expect(ancestorOrder).not.toBe(0);
+  expect(descendantOrder).toBe(ancestorOrder);
+  expect(parent.y).toBe(uncle.y);
+  expect(child.y).toBe(cousin.y);
+  await expect(page.locator('.react-flow__node-person')).toHaveCount(6);
+  await expect(page.locator('.react-flow__edge')).toHaveCount(8);
+});
