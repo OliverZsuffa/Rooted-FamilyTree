@@ -31,12 +31,14 @@ export function calculateGenerations(project: Pick<Project, 'people' | 'parentag
     const parentId = queue.shift()!;
     visited += 1;
     for (const childId of outgoing.get(parentId) ?? []) {
-      const parents = incoming.get(childId) ?? [];
-      const parentGenerations = parents.map((id) => generations.get(id)!);
-      if (new Set(parentGenerations).size > 1) return { ok: false, error: 'Biological and adoptive parents must belong to the same generation.' };
-      generations.set(childId, parentGenerations[0] + 1);
       indegree.set(childId, indegree.get(childId)! - 1);
-      if (indegree.get(childId) === 0) queue.push(childId);
+      if (indegree.get(childId) === 0) {
+        const parents = incoming.get(childId) ?? [];
+        const parentGenerations = parents.map((id) => generations.get(id)!);
+        if (new Set(parentGenerations).size > 1) return { ok: false, error: 'Biological and adoptive parents must belong to the same generation.' };
+        generations.set(childId, parentGenerations[0] + 1);
+        queue.push(childId);
+      }
     }
   }
   if (visited !== project.people.length) return { ok: false, error: 'This parentage would create a cycle in the family tree.' };
