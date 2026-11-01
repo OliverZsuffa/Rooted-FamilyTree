@@ -207,7 +207,7 @@ function App() {
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationType === 'marriage' || relationType === 'partnership') {
       setProject({ ...project, partnerships: [...project.partnerships, {
-        id: crypto.randomUUID(), type: relationType as ParentageType, person1Id: selectedPerson.id, person2Id: relationPersonId,
+        id: crypto.randomUUID(), type: relationType, person1Id: selectedPerson.id, person2Id: relationPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
       }] });
       setDialog(null);
@@ -221,7 +221,7 @@ function App() {
     };
     const error = validateParentage(project, relation);
     if (error) { setRelationError(error); return; }
-    setProject({ ...project, parentage: [...project.parentage, relation] });
+    setProject(syncGenerationRows({ ...project, parentage: [...project.parentage, relation] }));
     setDialog(null);
     setRelationError('');
   };
