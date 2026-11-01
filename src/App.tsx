@@ -4,9 +4,9 @@ import {
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { Check, Download, GitFork, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
-import { getKinshipRows } from './domain/kinship';
+import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
 import { getFamilyGroups } from './domain/familyGroups';
@@ -23,7 +23,7 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ dimmed: boolean }, 'family'>;
+type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -48,8 +48,9 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded parent group">
+    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded family connection">
       <Handle type="target" position={Position.Top} />
+      {data.symbol && <span className="family-junction-symbol" aria-label={data.symbol === '♥' ? 'Marriage' : 'Partnership'}>{data.symbol}</span>}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
