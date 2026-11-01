@@ -34,6 +34,18 @@ const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'guardian', label: 'Guardian' },
 ];
 
+function syncGenerationRows(project: Project): Project {
+  const result = calculateGenerations(project);
+  if (!result.ok) return project;
+  const people = new Set(project.people.map((person) => person.id));
+  const manualPositions = Object.fromEntries(
+    Object.entries(project.layout.manualPositions)
+      .filter(([id]) => people.has(id))
+      .map(([id, position]) => [id, { x: position.x, y: (result.generations.get(id) ?? 0) * 190 }]),
+  );
+  return { ...project, layout: { manualPositions } };
+}
+
 function arrange(project: Project): Record<string, { x: number; y: number }> {
   const result = calculateGenerations(project);
   if (!result.ok) return project.layout.manualPositions;
@@ -155,7 +167,7 @@ function App() {
         return;
       }
       if (window.confirm('Replace your current family tree with this backup?')) {
-        setProject(parsed.data);
+        setProject(syncGenerationRows(parsed.data));
         setSelectedId(null);
         setSearch('');
       }
@@ -215,15 +227,15 @@ function App() {
   };
 
   const deletePerson = () => {
-    if (!project || !selectedPerson) return;
+    if (!project || !selectedPerson || !window.confirm(`Delete ${selectedPerson.name || 'this person'} and their relationships?`)) return;
     const id = selectedPerson.id;
-    setProject({
+    setProject(syncGenerationRows({
       ...project,
       people: project.people.filter((person) => person.id !== id),
       parentage: project.parentage.filter((item) => item.parentId !== id && item.childId !== id),
       partnerships: project.partnerships.filter((item) => item.person1Id !== id && item.person2Id !== id),
       layout: { manualPositions: Object.fromEntries(Object.entries(project.layout.manualPositions).filter(([key]) => key !== id)) },
-    });
+    }));
     setSelectedId(null);
   };
 
