@@ -68,7 +68,7 @@ function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStartProject = useRef<Project | null>(null);
-  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const reactFlowInstance = useRef<ReactFlowInstance<FlowNode, Edge> | null>(null);
   const lastFittedStructure = useRef('');
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
   const [autoLayout, setAutoLayout] = useState<{ key: string; positions: Record<string, { x: number; y: number }> }>({ key: '', positions: {} });
