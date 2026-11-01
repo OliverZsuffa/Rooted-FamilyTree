@@ -8,6 +8,7 @@ import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
+import { getFamilyGroups } from './domain/familyGroups';
 import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
@@ -21,7 +22,7 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
+type JunctionFlowNode = Node<{ dimmed: boolean }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -33,6 +34,8 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
     >
       <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} id="partnership-left" />
+      <Handle type="source" position={Position.Right} id="partnership-right" />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
@@ -42,14 +45,13 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'partnership-junction partnership-junction-dimmed' : 'partnership-junction'} aria-label="Partnership">
+    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded parent group">
       <Handle type="target" position={Position.Top} />
-      <span>{data.symbol}</span>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
-const nodeTypes = { person: PersonCard, junction: JunctionCard };
+const nodeTypes = { person: PersonCard, family: JunctionCard };
 const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'biological_parent', label: 'Biological parent' },
   { value: 'adoptive_parent', label: 'Adoptive parent' },
@@ -293,20 +295,16 @@ function App() {
         dimmed: !!selectedId && !highlightedIds.has(person.id),
       },
     }));
-    const junctionNodes: JunctionFlowNode[] = [];
-    for (const partnership of project.partnerships) {
-      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
-        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
-      if (!sharedChildren.some((child) => visibleIds.has(child.childId)) || !visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
-      const first = project.layout.manualPositions[partnership.person1Id] ?? automatic[partnership.person1Id] ?? { x: 0, y: 0 };
-      const second = project.layout.manualPositions[partnership.person2Id] ?? automatic[partnership.person2Id] ?? { x: 0, y: 0 };
-      junctionNodes.push({
-        id: 'junction:' + partnership.id, type: 'junction',
-        position: { x: (first.x + second.x) / 2 + 76, y: (first.y + second.y) / 2 + 95 },
-        data: { symbol: partnership.type === 'marriage' ? '♥' : '♡', dimmed: !!selectedId && !highlightedIds.has(partnership.person1Id) && !highlightedIds.has(partnership.person2Id) },
-        draggable: false, selectable: false,
-      });
-    }
+    const junctionNodes: JunctionFlowNode[] = getFamilyGroups(project)
+      .filter((group) => group.parentIds.every((id) => visibleIds.has(id)) && group.childIds.some((id) => visibleIds.has(id)))
+      .map((group) => ({
+        id: group.id,
+        type: 'family',
+        position: automatic[group.id] ?? { x: 0, y: 0 },
+        data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
+        draggable: false,
+        selectable: false,
+      }));
     return [...personNodes, ...junctionNodes];
   }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
   useEffect(() => {
