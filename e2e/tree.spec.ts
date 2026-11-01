@@ -255,21 +255,24 @@ test('keeps cousin branches aligned through recursive ancestor expansion', async
   await addParentChild(page, 'Parent Branch', 'Child Branch');
   await addParentChild(page, 'Uncle Branch', 'Cousin Branch');
 
-  const nodeBounds = async (name: string) => page.locator('.react-flow__node-person')
+  const nodePosition = async (name: string) => page.locator('.react-flow__node-person')
     .filter({ hasText: name })
-    .boundingBox();
-  const parent = await nodeBounds('Parent Branch');
-  const uncle = await nodeBounds('Uncle Branch');
-  const child = await nodeBounds('Child Branch');
-  const cousin = await nodeBounds('Cousin Branch');
-  expect(parent && uncle && child && cousin).toBeTruthy();
+    .evaluate((element) => {
+      const match = (element as HTMLElement).style.transform.match(/translate\\(([-\\d.]+)px,\\s*([-\\d.]+)px\\)/);
+      if (!match) throw new Error('Could not read the rendered node position');
+      return { x: Number(match[1]), y: Number(match[2]) };
+    });
+  const parent = await nodePosition('Parent Branch');
+  const uncle = await nodePosition('Uncle Branch');
+  const child = await nodePosition('Child Branch');
+  const cousin = await nodePosition('Cousin Branch');
 
-  const ancestorOrder = Math.sign(parent!.x - uncle!.x);
-  const descendantOrder = Math.sign(child!.x - cousin!.x);
+  const ancestorOrder = Math.sign(parent.x - uncle.x);
+  const descendantOrder = Math.sign(child.x - cousin.x);
   expect(ancestorOrder).not.toBe(0);
   expect(descendantOrder).toBe(ancestorOrder);
-  expect(Math.abs(parent!.y - uncle!.y)).toBeLessThan(2);
-  expect(Math.abs(child!.y - cousin!.y)).toBeLessThan(2);
+  expect(parent.y).toBe(uncle.y);
+  expect(child.y).toBe(cousin.y);
   await expect(page.locator('.react-flow__node-person')).toHaveCount(6);
   await expect(page.locator('.react-flow__edge')).toHaveCount(8);
 });
