@@ -6,6 +6,7 @@
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   --paper: #f2eee4; --card: #faf8f1; --brown: #574638; --brown-soft: #8a7967;
   --olive: #78805a; --line: #ddd5c7;
+  --edge-parentage: #8b765e; --edge-secondary: #a99a83; --edge-partnership: #78805a; --edge-incomplete: #b45b4e;
 }
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
@@ -227,6 +228,7 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   --brown-soft: #b9ad9d;
   --olive: #aab487;
   --line: #514a3e;
+  --edge-parentage: #b5a58d; --edge-secondary: #b9aa92; --edge-partnership: #aab487; --edge-incomplete: #e18b7c;
   color: var(--brown);
   background: var(--paper);
 }
@@ -281,11 +283,11 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 :root[data-theme="dark"] .welcome-icon { background: #302d27; }
 :root[data-theme="dark"] .loading-screen { background: var(--paper); }
 
-.person-card-incomplete { border: 1.5px solid #b45b4e; background: #f8e9e4; }
+ .person-card-incomplete { border: 1.5px solid var(--edge-incomplete); background: #f8e9e4; }
 .person-card-gender { display: inline-block; margin-top: 5px; color: var(--olive); font-size: 9px; letter-spacing: .4px; }
-.family-junction-incomplete { border: 1.5px solid #b45b4e; background: #f8e9e4; color: #a34c40; }
+ .family-junction-incomplete { border: 1.5px solid var(--edge-incomplete); background: #f8e9e4; color: #a34c40; }
 .incomplete-control { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px !important; }
 .incomplete-control input { width: 15px !important; min-height: 15px !important; accent-color: #a65342; }
 .legacy-name-note { margin: 0; color: var(--brown-soft); font-size: 11px; line-height: 1.5; }
-:root[data-theme="dark"] .person-card-incomplete,
-:root[data-theme="dark"] .family-junction-incomplete { border-color: #e18b7c; background: #49302b; color: #f0b2a5; }
+ :root[data-theme="dark"] .person-card-incomplete,
+:root[data-theme="dark"] .family-junction-incomplete { border-color: var(--edge-incomplete); background: #49302b; color: #f0b2a5; }

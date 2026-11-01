@@ -702,7 +702,7 @@ function App() {
             elementsSelectable
             proOptions={{ hideAttribution: true }}
           >
-            <Background color="#d8cfbf" gap={24} size={1} />
+            <Background color={theme === 'dark' ? '#514b40' : '#d8cfbf'} gap={24} size={1} />
             <Controls showInteractive={false} />
           </ReactFlow>
           {selectedPerson && (

@@ -2,7 +2,7 @@
 
 ## Status
 
-Awaiting explicit user approval. Planning and documentation only. Do not implement before approval.
+Approved by the user on 2026-11-01. Implementation is in progress on branch `request/006-family-data-layout-dark-mode`. Do not merge to `main` without separate explicit approval.
 
 ## Goals
 

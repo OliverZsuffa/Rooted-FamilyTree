@@ -28,7 +28,7 @@ export function buildRelationshipEdges(
         source: parentId,
         target: group.id,
         type: 'smoothstep',
-        style: { stroke: project.parentage.some((relation) => relation.parentId === parentId && group.childIds.includes(relation.childId) && relation.manualIncomplete) ? '#b45b4e' : '#8b765e', strokeWidth: 1.5 },
+        style: { stroke: project.parentage.some((relation) => relation.parentId === parentId && group.childIds.includes(relation.childId) && relation.manualIncomplete) ? 'var(--edge-incomplete)' : 'var(--edge-parentage)', strokeWidth: 1.5 },
       });
     }
     for (const childId of group.childIds) {
@@ -38,7 +38,7 @@ export function buildRelationshipEdges(
         source: group.id,
         target: childId,
         type: 'smoothstep',
-        style: { stroke: project.parentage.some((relation) => relation.childId === childId && group.parentIds.includes(relation.parentId) && relation.manualIncomplete) ? '#b45b4e' : '#8b765e', strokeWidth: 1.5 },
+        style: { stroke: project.parentage.some((relation) => relation.childId === childId && group.parentIds.includes(relation.parentId) && relation.manualIncomplete) ? 'var(--edge-incomplete)' : 'var(--edge-parentage)', strokeWidth: 1.5 },
       });
     }
   }
@@ -53,7 +53,7 @@ export function buildRelationshipEdges(
       type: 'smoothstep',
       animated: false,
       style: {
-        stroke: relation.manualIncomplete ? '#b45b4e' : '#a99a83',
+        stroke: relation.manualIncomplete ? 'var(--edge-incomplete)' : 'var(--edge-secondary)',
         strokeWidth: 1.5,
         strokeDasharray: '5 4',
       },
@@ -71,8 +71,8 @@ export function buildRelationshipEdges(
       targetHandle: (positions[partnership.person1Id]?.x ?? 0) <= (positions[partnership.person2Id]?.x ?? 0) ? 'partnership-in-left' : 'partnership-in-right',
       type: 'bezier',
       label: partnership.type === 'marriage' ? '♥' : '♡',
-      labelStyle: { fill: partnership.manualIncomplete ? '#b45b4e' : '#78805a', fontSize: 13 },
-      labelBgStyle: { fill: '#f2eee4', fillOpacity: 0.95 },
+      labelStyle: { fill: partnership.manualIncomplete ? 'var(--edge-incomplete)' : 'var(--edge-partnership)', fontSize: 13 },
+      labelBgStyle: { fill: 'var(--paper)', fillOpacity: 0.95 },
       style: { stroke: partnership.manualIncomplete ? '#b45b4e' : '#78805a', strokeWidth: 1.7 },
     });
   }
