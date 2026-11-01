@@ -193,7 +193,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!project || !storageReady || saveState === 'error') return;
+    if (!project || !storageReady) return;
     setSaveState('saving');
     const timeout = window.setTimeout(() => {
       saveProject(project).then(() => setSaveState('saved')).catch(() => setSaveState('error'));
