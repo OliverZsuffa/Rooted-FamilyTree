@@ -617,10 +617,9 @@ function App() {
                 <p className="eyebrow">CONNECT YOUR TREE</p>
                 <h2 id="dialog-title">{editingRelation ? 'Edit relationship' : 'Add a relationship'}</h2>
                 <label>Relationship type
-                  <select disabled={!!editingRelation} value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType | 'marriage' | 'partnership')}>
-                    {parentageTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                    <option value="marriage">Marriage</option>
-                    <option value="partnership">Non marital partnership</option>
+                  <select value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType | 'marriage' | 'partnership')}>
+                    {(!editingRelation || editingRelation.kind === 'parentage') && parentageTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    {(!editingRelation || editingRelation.kind === 'partnership') && <><option value="marriage">Marriage</option><option value="partnership">Non marital partnership</option></>}
                   </select>
                 </label>
                 {relationType === 'marriage' || relationType === 'partnership' ? (
