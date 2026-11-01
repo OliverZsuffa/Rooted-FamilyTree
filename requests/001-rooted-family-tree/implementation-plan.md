@@ -1,117 +1,82 @@
 # Implementation plan: Rooted family tree
 
-**Status:** Approved by Oliver. Phase 1 foundation has been implemented on the request branch. Automated verification is pending.
+**Status:** Approved by Oliver. The initial functional application has been implemented on the request branch. Automated verification is in progress. Browser testing and deployment remain outstanding.
 
 ## 1. Repository and baseline
 
-- Confirm the repository structure and establish the project documentation.
-- Set up a focused implementation branch after plan approval.
-- Use React, TypeScript, and Vite.
-- Configure GitHub Pages deployment with the correct project subpath.
-- Establish automated formatting, type checking, tests, and production build commands.
+- [x] Establish repository documentation and request-first workflow.
+- [x] Create focused implementation branch.
+- [x] Set up React, TypeScript, and Vite.
+- [x] Configure the GitHub Pages project base path.
+- [x] Add type checking, unit tests, and production build commands.
 
 ## 2. Domain model and validation
 
-Create a normalized domain model independent of React Flow:
-
-- Person records with standardized name and life dates, flexible attributes, and selected card attribute.
-- Parentage relationship records distinguishing biological, adoptive, step-parent, and guardian links.
-- Partnership records distinguishing marriage and non-marital partnership, with optional start/end dates.
-- Project metadata and persisted layout preferences.
-- Versioned JSON schema for reliable import/export.
-
-Use runtime schema validation. Centralize relationship operations and enforce invariants before changing state.
-
-Generation rules:
-- Biological and adoptive parenthood contribute to ancestry generation.
-- Step-parent and guardian relationships do not determine generation.
-- Marriage and partnership do not determine generation.
-- Reject cycles and parentage that would assign incompatible generations.
-- Keep generation calculation separate from visual positioning.
+- [x] Versioned project schema for people, parentage, partnerships, and layout.
+- [x] Custom person attributes.
+- [x] Runtime validation for project data and backup imports.
+- [x] Biological, adoptive, step-parent, and guardian relationships.
+- [x] Marriage and non-marital partnership records with dates.
+- [x] Automatic generation calculation, cycle detection, and incompatible generation validation.
+- [x] Derived sibling relationships.
 
 ## 3. Canvas and layout
 
-- Use React Flow with custom person nodes and relationship edges.
-- Represent partnerships with dedicated junction nodes and a small marriage/partnership symbol.
-- Connect children to the appropriate parent or partnership junction, supporting cases where parents are not partnered.
-- Use ELK.js for initial and explicit automatic layout.
-- Keep domain relationships as the source of truth; React Flow nodes and edges are derived visualization state.
-- Persist manual position adjustments separately from domain relationships.
-- Constrain manual vertical movement to the person's generation band.
-- Recalculate edges after movement and preserve manual positions during ordinary edits.
-- Provide an explicit action to restore automatic layout.
+- [x] React Flow canvas with custom person nodes and relationship edges.
+- [x] ELK.js automatic layout.
+- [x] Partnership junction visualization for shared children.
+- [x] Persisted manual positions constrained to generation rows.
+- [x] Explicit automatic layout reset.
 
 ## 4. Minimal UX and responsive interaction
 
-- Keep the canvas central and avoid a permanent sidebar.
-- Use a small, stable set of visible actions.
-- Put add-relative actions directly on the relevant person or in its compact popup.
-- Use one compact person popup for viewing and editing rather than stacking dialogs.
-- Provide search through a single easy-to-reach control.
-- Keep zoom, fit-tree, undo, redo, and automatic-layout actions accessible without a nested menu system.
-- On mobile, use touch-friendly controls and a compact action surface rather than shrinking the desktop toolbar.
-- Support touch dragging, pinch zoom, and a usable popup layout.
-- Use olive sparingly; brown remains the dominant colour.
+- [x] Canvas centred as the main interface.
+- [x] Compact person profile panel and editing dialog.
+- [x] Create a new relative or connect an existing person.
+- [x] Search, zoom, pan, and fit view.
+- [x] Undo and redo, including keyboard shortcuts.
+- [x] Responsive toolbar and mobile canvas styling.
+- [ ] Real-device mobile interaction verification.
 
 ## 5. Local persistence and portability
 
-- Use IndexedDB for the project and layout data.
-- Autosave after committed edits, with clear but unobtrusive save status.
-- Add versioned JSON export and validated import.
-- Validate the complete imported document before changing stored data.
-- Make import replacement explicit and preserve the existing tree if validation or writing fails.
-- Include people, relationships, custom attributes, and manual layout preferences in backups.
-- No backend or network dependency for normal use.
+- [x] IndexedDB project storage and autosave.
+- [x] Complete JSON export.
+- [x] Validated JSON import with explicit replacement confirmation.
+- [ ] Automated persistence and migration tests.
+- [ ] Browser reload and import/export round-trip verification.
 
 ## 6. PWA and offline support
 
-- Use the Vite PWA integration with Workbox to generate a web app manifest and service worker.
-- Configure app name, standalone display mode, theme colour, icons, start URL, scope, and Vite base path for GitHub Pages.
-- Precache the production app shell, scripts, styles, fonts, and icons.
-- Keep all required fonts and icons local so no remote asset is needed at runtime.
-- Register the service worker in production and verify its scope under the repository subpath.
-- Provide an offline fallback for navigation and cache versioning/update handling.
-- Avoid caching any remote API because the application has no runtime backend.
-- Ensure IndexedDB remains the source of user data; service-worker caches contain app assets only.
-- Verify that a first online visit activates the cache, then test a fresh reload and all core operations with network disabled.
-- Use a safe update flow that does not unexpectedly discard an in-progress edit.
+- [x] Vite PWA integration and Workbox precaching configuration.
+- [x] Manifest, local icon, standalone display, and project subpath scope.
+- [x] Service-worker registration and user prompted updates.
+- [x] GitHub Pages deployment workflow.
+- [ ] Confirm deployment and verify actual manifest and service-worker paths.
+- [ ] Verify installability and all core features offline.
 
 ## 7. Testing
 
-Add automated tests for:
-- Relationship validation and cycle detection.
-- Generation calculation with biological and adoptive parentage.
-- Step-parent and guardian links not affecting generation.
-- Multiple partnerships and parent junction construction.
-- Import/export round trips and invalid import rejection.
-- Persistence and migration behaviour.
-- Layout mapping and manual-position preservation.
-
-Run:
-- TypeScript type check.
-- Unit and component tests.
-- Production build.
-- GitHub Actions checks.
-- Browser tests for desktop and mobile layouts where practical.
-
-Manual PWA verification must cover installability, offline launch after initial cache population, offline editing and reload, and update behaviour.
+- [x] Domain and backup validation tests.
+- [x] GitHub Actions workflow for type checking, tests, and production build.
+- [ ] Confirm the latest automated run succeeds.
+- [ ] Add persistence and component interaction tests.
+- [ ] Complete desktop, mobile, and offline manual verification.
 
 ## 8. Deployment and review
 
-- Deploy through GitHub Pages using a reproducible Actions workflow.
-- Verify all assets, manifest, and service-worker paths under the project subpath.
-- Verify the deployed application can be installed and used offline.
-- Review the complete diff and record actual test outcomes.
-- Update reusable knowledge documents after implementation.
-- Open a pull request and wait for review.
-- Merge into main only after successful checks and explicit review.
+- [x] Add reproducible GitHub Pages Actions workflow.
+- [ ] Review the complete implementation diff.
+- [ ] Merge only after successful checks and explicit review.
+- [ ] Verify the deployed application.
+- [ ] Record actual PWA and offline test results.
 
 ## Main risks and mitigations
 
-- **Complex family structures:** keep relationships normalized and validate generation rules centrally.
-- **Layout complexity:** use partnership junction nodes and test multiple marriages and siblings early.
-- **Manual layout instability:** separate manual coordinates from relationship data and preserve them during routine recalculation.
-- **Mobile canvas usability:** test touch interactions early rather than treating mobile as a final styling pass.
-- **GitHub Pages PWA paths:** test manifest, service worker, icons, and navigation under the actual repository base path.
-- **Offline data safety:** keep user data in IndexedDB, not service-worker caches, and validate imports before replacement.
-- **Minimal UI drift:** review every new control against the principle that the simplest direct interaction should win.
+- **Complex family structures:** normalized relationships and centralized generation validation.
+- **Layout complexity:** ELK layout and partnership junction nodes.
+- **Manual layout instability:** manual coordinates remain separate from relationship data and vertical placement is generation constrained.
+- **Mobile canvas usability:** dedicated mobile styling; real-device testing remains required.
+- **GitHub Pages PWA paths:** base path and relative manifest scope are configured; deployed verification remains required.
+- **Offline data safety:** IndexedDB stores user data; service-worker caches only app assets; imports are validated before replacement.
+- **Minimal UI drift:** keep direct actions and avoid nested settings surfaces.
