@@ -20,7 +20,8 @@ Record actual observations after implementation. Do not mark a test as passed un
 - [ ] Schema migration tests.
 - [ ] Import/export browser round-trip test.
 - [ ] Component and interaction tests for editing, relationships, undo, and redo.
-- [x] A completed GitHub Actions run passed type checking, all 20 current unit tests, and production build.
+- [x] A completed GitHub Actions run passed type checking, all 19 then current unit tests, and production build.
+- [ ] Confirm the additional date range test passes.
 - [ ] Latest GitHub Actions run including the new PWA build verification and date range test must be confirmed successful.
 - [x] Automated production build check for manifest, service worker, local icon, and Pages base path.
 - [ ] Production build under the final Pages path must be manually inspected.
@@ -65,4 +66,4 @@ Record actual observations after implementation. Do not mark a test as passed un
 
 ## Actual results
 
-A completed run passed type checking, 20 unit tests, and production build. The dependency audit passed its high severity threshold. The new PWA production verification step is awaiting the latest run. No manual browser or offline tests have been performed yet.
+A completed run passed type checking, 19 unit tests, and production build. The dependency audit passed its high severity threshold. The additional date range test and PWA production verification are awaiting the latest run. No manual browser or offline tests have been performed yet.
