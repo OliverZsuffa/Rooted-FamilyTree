@@ -16,13 +16,21 @@ async function database() {
 
 export async function loadProject(): Promise<Project | null> {
   const db = await database();
-  const stored = await db.get(PROJECT_STORE, ACTIVE_PROJECT_KEY);
-  if (!stored) return null;
-  return projectSchema.parse(stored);
+  try {
+    const stored = await db.get(PROJECT_STORE, ACTIVE_PROJECT_KEY);
+    if (!stored) return null;
+    return projectSchema.parse(stored);
+  } finally {
+    db.close();
+  }
 }
 
 export async function saveProject(project: Project): Promise<void> {
   const validated = projectSchema.parse({ ...project, updatedAt: new Date().toISOString() });
   const db = await database();
-  await db.put(PROJECT_STORE, validated, ACTIVE_PROJECT_KEY);
+  try {
+    await db.put(PROJECT_STORE, validated, ACTIVE_PROJECT_KEY);
+  } finally {
+    db.close();
+  }
 }
