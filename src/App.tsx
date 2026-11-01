@@ -81,6 +81,7 @@ function arrange(project: Project): Record<string, { x: number; y: number }> {
 function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
+  const dragStartProject = useRef<Project | null>(null);
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
   const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [storageReady, setStorageReady] = useState(false);
@@ -106,12 +107,12 @@ function App() {
   const [needRefresh, setNeedRefresh] = useState(false);
   const { updateServiceWorker } = useRegisterSW({ immediate: true, onNeedRefresh: () => setNeedRefresh(true) });
 
-  const commitProject = useCallback((next: Project | ((current: Project) => Project)) => {
+  const commitProject = useCallback((next: Project | ((current: Project) => Project), recordHistory = true) => {
     const current = projectRef.current;
     if (!current) return;
     const updated = typeof next === 'function' ? next(current) : next;
     if (updated === current) return;
-    setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
+    if (recordHistory) setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
     projectRef.current = updated;
     setProject(updated);
   }, []);
@@ -389,7 +390,20 @@ function App() {
         manualPositions[change.id] = { x: change.position.x, y: generation * 190 };
       }
       return { ...current, layout: { manualPositions } };
-    });
+    }, false);
+  }, [commitProject]);
+
+  const onNodeDragStart = useCallback(() => {
+    dragStartProject.current = projectRef.current;
+  }, []);
+
+  const onNodeDragStop = useCallback(() => {
+    const before = dragStartProject.current;
+    const after = projectRef.current;
+    if (before && after && before !== after) {
+      setHistory((state) => ({ past: [...state.past, before].slice(-50), future: [] }));
+    }
+    dragStartProject.current = null;
   }, []);
 
 
@@ -436,6 +450,8 @@ function App() {
             onNodeClick={(_event, node) => { if (project.people.some((person) => person.id === node.id)) setSelectedId(node.id); }}
             onPaneClick={() => setSelectedId(null)}
             onNodesChange={onNodesChange}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDragStop={onNodeDragStop}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
