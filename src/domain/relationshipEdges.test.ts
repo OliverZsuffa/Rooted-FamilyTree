@@ -11,7 +11,7 @@ function fixture(): Project {
 }
 
 describe('relationship edge construction', () => {
-  it('routes explicit parent sets through family junctions and partnerships separately', () => {
+  it('consolidates a matching partnership into the family junction', () => {
     const project = fixture();
     project.parentage = [
       { id: 'a-child', type: 'biological_parent', parentId: 'a', childId: 'c' },
@@ -21,8 +21,15 @@ describe('relationship edge construction', () => {
     ];
     project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [] }];
     const edges = buildRelationshipEdges(project, ['a', 'b', 'c', 'd', 'e', 'family:a|b'], null, new Set(), { a: { x: 0, y: 0 }, b: { x: 240, y: 0 } });
-    expect(edges.map((edge) => edge.id).sort()).toEqual(['ab', 'family:a|b:child:c', 'family:a|b:parent:a', 'family:a|b:parent:b', 'guardian', 'step']);
-    expect(edges.find((edge) => edge.id === 'ab')).toMatchObject({ sourceHandle: 'partnership-out-right', targetHandle: 'partnership-in-left', type: 'bezier' });
+    expect(edges.map((edge) => edge.id).sort()).toEqual(['family:a|b:child:c', 'family:a|b:parent:a', 'family:a|b:parent:b', 'guardian', 'step']);
+    expect(edges.some((edge) => edge.id === 'ab')).toBe(false);
+  });
+
+  it('keeps a partnership separate when it has no matching recorded children', () => {
+    const project = fixture();
+    project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [] }];
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'c'], null, new Set());
+    expect(edges.map((edge) => edge.id)).toEqual(['ab']);
   });
 
   it('does not infer children from a marriage', () => {
