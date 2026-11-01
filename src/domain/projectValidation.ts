@@ -1,4 +1,4 @@
-import { projectSchema, type Project } from './schema';
+import { isDefinitelyBefore, projectSchema, type Project } from './schema';
 import { calculateGenerations } from './relationships';
 
 export type ProjectValidation =
@@ -25,7 +25,7 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
     return { success: false, error: 'The backup contains duplicate parentage relationships.' };
   }
 
-  if (project.people.some((person) => person.birthDate && person.deathDate && person.deathDate < person.birthDate)) {
+  if (project.people.some((person) => person.birthDate && person.deathDate && isDefinitelyBefore(person.deathDate, person.birthDate))) {
     return { success: false, error: 'A person has a death date before their birth date.' };
   }
 
@@ -35,7 +35,7 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
   }
   if (project.partnerships.some((item) => !people.has(item.person1Id)
     || !people.has(item.person2Id) || item.person1Id === item.person2Id
-    || (item.startDate && item.endDate && item.endDate < item.startDate))) {
+    || (item.startDate && item.endDate && isDefinitelyBefore(item.endDate, item.startDate)))) {
     return { success: false, error: 'A partnership contains an invalid person reference or date range.' };
   }
 

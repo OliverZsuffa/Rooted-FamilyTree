@@ -8,10 +8,27 @@ function isValidPartialDate(value: string): boolean {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!dateMatch) return false;
   const year = Number(dateMatch[1]), month = Number(dateMatch[2]), day = Number(dateMatch[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
   return year >= 1 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 export const partialDateSchema = z.string().refine(isValidPartialDate, 'Expected YYYY, YYYY-MM, or a valid YYYY-MM-DD date');
+
+function partialDateBounds(value: string): { start: string; end: string } {
+  if (/^\\d{4}$/.test(value)) return { start: value + '-01-01', end: value + '-12-31' };
+  if (/^\\d{4}-\\d{2}$/.test(value)) {
+    const [year, month] = value.split('-').map(Number);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    return { start: value + '-01', end: value + '-' + String(days).padStart(2, '0') };
+  }
+  return { start: value, end: value };
+}
+
+export function isDefinitelyBefore(first: string, second: string): boolean {
+  return partialDateBounds(first).end < partialDateBounds(second).start;
+}
 const isoDateSchema = partialDateSchema;
 export const genderSchema = z.enum(['female', 'male', 'nonbinary']).nullable().default(null);
 export const nameHistorySchema = z.object({

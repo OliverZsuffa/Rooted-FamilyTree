@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, Download, GitFork, LayoutGrid, Moon, Plus, Redo2, Search, Sprout, Sun, Trash2, Undo2, Upload, X } from 'lucide-react';
-import { createEmptyProject, partialDateSchema, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
+import { createEmptyProject, isDefinitelyBefore, partialDateSchema, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
 import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
@@ -431,7 +431,7 @@ function App() {
     if ((!editingPerson && (!first || !last)) || ((first || last) && (!first || !last))) { setAttributeError('Enter both a first name and a last name.'); return; }
     if (birthDate && !partialDateSchema.safeParse(birthDate).success) { setAttributeError('Enter the birth date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     if (deathDate && !partialDateSchema.safeParse(deathDate).success) { setAttributeError('Enter the death date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
-    if (birthDate && deathDate && deathDate < birthDate) { setAttributeError('Death date cannot be before birth date.'); return; }
+    if (birthDate && deathDate && isDefinitelyBefore(deathDate, birthDate)) { setAttributeError('Death date cannot be before birth date.'); return; }
     const attributes: Record<string, string | number | boolean | null> = {};
     for (const row of attributeRows) {
       const key = row.key.trim();
@@ -477,7 +477,7 @@ function App() {
     const otherPersonId = newRelative?.id ?? relationPersonId;
     const baseProject = newRelative ? { ...project, people: [...project.people, newRelative] } : project;
     if (relationType === 'marriage' || relationType === 'partnership') {
-      if (partnershipStartDate && partnershipEndDate && partnershipEndDate < partnershipStartDate) {
+      if (partnershipStartDate && partnershipEndDate && isDefinitelyBefore(partnershipEndDate, partnershipStartDate)) {
         setRelationError('The end date cannot be before the start date.');
         return;
       }
