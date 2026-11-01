@@ -13,6 +13,7 @@ import { projectSchema } from './domain/schema';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 type PersonNodeData = { person: Person; selected: boolean };
+type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
 type JunctionFlowNode = Node<{ symbol: string }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
@@ -20,11 +21,13 @@ type FlowNode = PersonFlowNode | JunctionFlowNode;
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
+  const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
   return (
     <div className={`person-card ${data.selected ? 'person-card-selected' : ''}`}>
       <Handle type="target" position={Position.Top} />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
+      {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -86,6 +89,9 @@ function App() {
   const [personName, setPersonName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
+  const [attributeRows, setAttributeRows] = useState<AttributeRow[]>([]);
+  const [displayAttribute, setDisplayAttribute] = useState('');
+  const [attributeError, setAttributeError] = useState('');
   const [relationType, setRelationType] = useState<ParentageType | 'marriage' | 'partnership'>('biological_parent');
   const [partnershipStartDate, setPartnershipStartDate] = useState('');
   const [partnershipEndDate, setPartnershipEndDate] = useState('');
@@ -256,6 +262,9 @@ function App() {
     setPersonName(person?.name ?? '');
     setBirthDate(person?.birthDate ?? '');
     setDeathDate(person?.deathDate ?? '');
+    setAttributeRows(person ? Object.entries(person.attributes).map(([key, value]) => ({ key, value: value === null ? '' : String(value), type: typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'text' })) : []);
+    setDisplayAttribute(person?.displayAttribute ?? '');
+    setAttributeError('');
     setDialog('person');
   };
 
