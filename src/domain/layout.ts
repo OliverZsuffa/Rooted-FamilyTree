@@ -162,20 +162,46 @@ function calculateLayoutScore(
       && positions[relation.parentId] && positions[relation.childId])
     .map((relation) => [relation.parentId + '|' + relation.childId, relation])).values()];
 
+  const layers = new Map<number, typeof edges>();
+  for (const edge of edges) {
+    const parentGeneration = generations.get(edge.parentId);
+    if (parentGeneration === undefined || generations.get(edge.childId) !== parentGeneration + 1) continue;
+    layers.set(parentGeneration, [...(layers.get(parentGeneration) ?? []), edge]);
+  }
+
   let crossings = 0;
-  for (let first = 0; first < edges.length; first += 1) {
-    const a = edges[first];
-    if (generations.get(a.childId) !== (generations.get(a.parentId) ?? -1) + 1) continue;
-    const aParent = positions[a.parentId].x + CARD_WIDTH / 2;
-    const aChild = positions[a.childId].x + CARD_WIDTH / 2;
-    for (let second = first + 1; second < edges.length; second += 1) {
-      const b = edges[second];
-      if (a.parentId === b.parentId || a.childId === b.childId) continue;
-      if (generations.get(b.childId) !== (generations.get(b.parentId) ?? -1) + 1) continue;
-      if (generations.get(a.parentId) !== generations.get(b.parentId)) continue;
-      const bParent = positions[b.parentId].x + CARD_WIDTH / 2;
-      const bChild = positions[b.childId].x + CARD_WIDTH / 2;
-      if ((aParent - bParent) * (aChild - bChild) < 0) crossings += 1;
+  for (const layerEdges of layers.values()) {
+    const childCentres = [...new Set(layerEdges.map((edge) => positions[edge.childId].x + CARD_WIDTH / 2))]
+      .sort((a, b) => a - b);
+    const childRanks = new Map(childCentres.map((centre, index) => [centre, index + 1]));
+    const tree = new Array(childCentres.length + 1).fill(0);
+    const prefixCount = (index: number) => {
+      let total = 0;
+      for (let cursor = index; cursor > 0; cursor -= cursor & -cursor) total += tree[cursor];
+      return total;
+    };
+    const addCount = (index: number) => {
+      for (let cursor = index; cursor < tree.length; cursor += cursor & -cursor) tree[cursor] += 1;
+    };
+
+    const ordered = [...layerEdges].sort((first, second) =>
+      positions[first.parentId].x - positions[second.parentId].x);
+    let processed = 0;
+    for (let index = 0; index < ordered.length;) {
+      const parentId = ordered[index].parentId;
+      let end = index + 1;
+      while (end < ordered.length && ordered[end].parentId === parentId) end += 1;
+
+      for (let edgeIndex = index; edgeIndex < end; edgeIndex += 1) {
+        const rank = childRanks.get(positions[ordered[edgeIndex].childId].x + CARD_WIDTH / 2)!;
+        crossings += processed - prefixCount(rank);
+      }
+      for (let edgeIndex = index; edgeIndex < end; edgeIndex += 1) {
+        const rank = childRanks.get(positions[ordered[edgeIndex].childId].x + CARD_WIDTH / 2)!;
+        addCount(rank);
+        processed += 1;
+      }
+      index = end;
     }
   }
 
