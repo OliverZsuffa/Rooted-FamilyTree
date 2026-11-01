@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
-  applyNodeChanges, Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
+  applyNodeChanges, Background, BaseEdge, Controls, getSmoothStepPath, ReactFlow, type Edge, type EdgeProps, type Node, type NodeChange, type NodeProps,
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -59,6 +59,18 @@ function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
     </div>
   );
 }
+function FamilyRouteEdge(props: EdgeProps) {
+  const lane = Number((props.data as { routeLane?: number } | undefined)?.routeLane ?? 0);
+  const [path] = getSmoothStepPath({
+    sourceX: props.sourceX, sourceY: props.sourceY,
+    targetX: props.targetX, targetY: props.targetY,
+    sourcePosition: props.sourcePosition, targetPosition: props.targetPosition,
+    offset: 24 + lane * 14, borderRadius: 10,
+  });
+  return <BaseEdge id={props.id} path={path} style={props.style} />;
+}
+const edgeTypes = { familyRoute: FamilyRouteEdge };
+
 const nodeTypes = { person: PersonCard, family: JunctionCard };
 const parentageTypes: { value: ParentageType; label: string }[] = [
   { value: 'biological_parent', label: 'Biological parent' },
@@ -681,6 +693,7 @@ function App() {
             nodes={flowNodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodeClick={(_event, node) => { if (project.people.some((person) => person.id === node.id)) setSelectedId(node.id); }}
             onPaneClick={() => setSelectedId(null)}
             onNodesChange={onNodesChange}
