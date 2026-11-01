@@ -41,7 +41,7 @@ describe('kinship labels', () => {
       { id: '3', type: 'biological_parent', parentId: 'grandpa', childId: 'mother' },
       { id: '4', type: 'biological_parent', parentId: 'mother', childId: 'child' },
       { id: '5', type: 'biological_parent', parentId: 'father', childId: 'child' },
-      { id: '6', type: 'biological_parent', parentId: 'father', childId: 'cousin' },
+      { id: '6', type: 'biological_parent', parentId: 'aunt', childId: 'cousin' },
     ];
     expect(getKinshipLabel(project, 'child', 'aunt')).toBe('aunt');
     expect(getKinshipLabel(project, 'child', 'cousin')).toBe('cousin');
