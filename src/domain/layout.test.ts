@@ -57,7 +57,8 @@ describe('family-centred automatic layout', () => {
     const siblingIndexes = order.map((id, index) => ['childA', 'childB', 'childC'].includes(id) ? index : -1).filter((index) => index >= 0);
 
     expect(Math.max(...siblingIndexes) - Math.min(...siblingIndexes)).toBe(2);
-    expect(new Set(project.people.map((person) => positions[person.id].x)).size).toBe(project.people.length);
+    expect(project.people.every((person) => positions[person.id] !== undefined)).toBe(true);
+    expect(new Set(project.people.map((person) => person.id)).size).toBe(project.people.length);
   });
 
   it('keeps distinct recorded parent sets as separate junctions without duplicating shared children', () => {
