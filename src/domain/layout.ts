@@ -20,8 +20,8 @@ export function createFallbackPositions(project: Pick<Project, 'people' | 'paren
   for (const group of getFamilyGroups(project)) {
     const parents = group.parentIds.map((id) => positions[id]).filter((value): value is Position => !!value);
     const children = group.childIds.map((id) => positions[id]).filter((value): value is Position => !!value);
-    const points = parents.length ? parents : children;
-    const x = points.length ? points.reduce((sum, point) => sum + point.x, 0) / points.length + 80 : 0;
+    const points = [...parents, ...children];
+    const x = points.length ? points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9 : 0;
     const y = parents.length && children.length
       ? (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35
       : 0;
@@ -91,7 +91,7 @@ export async function calculateAutoPositions(
     const children = group.childIds.map((id) => laidOut[id]).filter((value): value is Position => !!value);
     if (parents.length && children.length) {
       laidOut[group.id] = {
-        x: (Math.min(...children.map((point) => point.x)) + Math.max(...parents.map((point) => point.x))) / 2,
+        x: ([...parents, ...children].reduce((sum, point) => sum + point.x + 88, 0) / (parents.length + children.length)) - 9,
         y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
       };
     }
