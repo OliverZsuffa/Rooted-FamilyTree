@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved. Phase 1 foundation implemented; verification pending.
+Approved. Core functional implementation is in place on the request branch. Automated verification is running; browser testing, offline verification, and deployment remain outstanding.
 
 ## Desired outcome
 
