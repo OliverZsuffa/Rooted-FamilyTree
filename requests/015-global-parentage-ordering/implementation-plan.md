@@ -2,7 +2,7 @@
 
 ## Status
 
-Research and isolated prototype stage completed. No application code has been changed. The recommended implementation direction is documented below. Production implementation still requires explicit user approval.
+Implementation committed on `request/015-global-parentage-ordering` and proposed in [PR #15](https://github.com/OliverZsuffa/Rooted-FamilyTree/pull/15). Automated verification and visual review are still pending. No merge to `main` has been performed.
 
 ## Goal
 
@@ -210,10 +210,10 @@ Record actual test results. Do not mark visual checks complete based only on CI.
 1. Complete Stage 1 research and prototype comparison on `request/015-global-parentage-ordering`.
 2. Present findings, tradeoffs, and the recommended algorithm.
 3. Update this plan with the selected algorithm, scoring details, and implementation tasks.
-4. Wait for explicit user approval before changing application code.
+4. Obtain explicit user approval before changing application code. This approval was given for Request 015.
 5. Implement on `request/015-global-parentage-ordering`.
 6. Review the complete diff and confirm connector improvements and manual positioning remain intact.
-7. Open a pull request with test evidence.
+7. Open a pull request with test evidence. PR #15 is open; verification is pending.
 8. Do not merge to `main` without separate explicit approval.
 
 
