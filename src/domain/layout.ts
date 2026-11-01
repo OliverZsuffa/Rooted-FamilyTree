@@ -2,14 +2,22 @@ import type { Project } from './schema';
 import { calculateGenerations } from './relationships';
 
 
+let elkPromise: Promise<InstanceType<(typeof import('elkjs/lib/elk.bundled.js'))['default']>> | null = null;
+
+async function getElk() {
+  if (!elkPromise) {
+    elkPromise = import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
+  }
+  return elkPromise;
+}
+
 export async function calculateAutoPositions(
   project: Pick<Project, 'people' | 'parentage'>,
 ): Promise<Record<string, { x: number; y: number }>> {
   const generationResult = calculateGenerations(project);
   if (!generationResult.ok || project.people.length === 0) return {};
 
-  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
-  const elk = new ELK();
+  const elk = await getElk();
   const graph = await elk.layout({
     id: 'rooted-tree',
     layoutOptions: {
