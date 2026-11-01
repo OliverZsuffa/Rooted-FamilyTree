@@ -2,17 +2,17 @@
 
 ## Stage 1: Isolated algorithm comparison
 
-- [ ] Inspect D3 Pedigree Tree source and document its graph and ordering assumptions.
-- [ ] Reproduce its relevant parent and child position heuristic in an isolated prototype.
-- [ ] Implement a constrained layered ordering prototype using downward and upward sweeps.
-- [ ] Compare the current algorithm and candidate algorithms on identical fixtures.
+- [x] Inspect D3 Pedigree Tree source and document its graph and ordering assumptions.
+- [x] Reproduce its relevant parent and child position heuristic in an isolated prototype.
+- [x] Implement a constrained layered ordering prototype using downward and upward sweeps.
+- [x] Compare a stable baseline proxy and candidate algorithms on identical fixtures. Exact production baseline execution remains outstanding.
 - [ ] Test a hybrid only if evidence suggests it may improve results.
-- [ ] Record crossing counts between adjacent generations.
-- [ ] Record exact-parent-set sibling block integrity.
-- [ ] Record shared-person uniqueness and branch coherence.
-- [ ] Record deterministic behaviour under equivalent input permutations.
-- [ ] Record runtime and evaluation counts.
-- [ ] Recommend an algorithm based on the results, not intuition alone.
+- [x] Record crossing counts between adjacent generations.
+- [x] Record exact-parent-set sibling block integrity.
+- [x] Record shared-person uniqueness and branch coherence on the synthetic fixtures.
+- [x] Record deterministic behaviour under reversed person and parentage insertion order.
+- [ ] Record runtime and evaluation counts on realistic larger graphs.
+- [x] Recommend constrained layered sweeps with a global acceptance objective.
 
 ## Structural fixtures
 
@@ -62,3 +62,8 @@
 ## Results
 
 To be completed during the relevant stage. Research and prototype results must be recorded before application implementation is proposed.
+
+
+## Stage 1 results
+
+The five-fixture crossing comparison and caveats are recorded in [notes.md](notes.md). The isolated prototype is in [prototype.py](prototype.py). The current production implementation has not yet been executed as a baseline inside the prototype harness, and realistic large-graph runtime measurements remain outstanding.
