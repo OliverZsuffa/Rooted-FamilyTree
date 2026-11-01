@@ -1,11 +1,12 @@
 # Implementation plan: Request 002
 
-**Status:** Proposed. No application code has been changed.
+**Status:** Implementation in progress. The approved scope includes the additional mobile dragging defect.
 
 ## 1. Reproduce and isolate
 - [ ] Establish a reproducible fixture with several unrelated people, parent-child relationships, partnerships, and multiple family branches.
 - [ ] Trace layout state from initial load through add, edit, delete, empty tree, import, and replacement with a different tree.
 - [ ] Trace node and edge arrays produced for each fixture.
+- [x] Identify the stale layout state and incomplete-position fallback that can stack people at the same coordinate.
 - [ ] Reproduce the reported failures in automated browser tests before applying fixes.
 - [ ] Inspect the deployed build and confirm its commit matches the reviewed main branch.
 
@@ -35,6 +36,7 @@
 - [ ] Make dialogs usable with the on-screen keyboard and safe-area insets.
 - [ ] Verify touch pan, drag, and pinch zoom.
 - [ ] Prevent accidental page scrolling while interacting with the canvas, without blocking normal form scrolling.
+- [ ] Ensure touch dragging of a person card is distinct from canvas panning and that the resulting position is saved and undoable.
 - [ ] Keep the existing visual identity and avoid adding unnecessary permanent controls.
 
 ## 5. Test strategy
