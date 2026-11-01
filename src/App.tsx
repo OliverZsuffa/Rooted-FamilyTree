@@ -128,6 +128,35 @@ function App() {
     });
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        const current = projectRef.current;
+        setHistory((state) => {
+          if (!current || !state.past.length) return state;
+          const previous = state.past[state.past.length - 1];
+          projectRef.current = previous;
+          setProject(previous);
+          return { past: state.past.slice(0, -1), future: [current, ...state.future] };
+        });
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        setHistory((state) => {
+          if (!state.future.length) return state;
+          const next = state.future[0];
+          projectRef.current = next;
+          setProject(next);
+          return { past: [...state.past, next].slice(-50), future: state.future.slice(1) };
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const redo = () => {
     setHistory((state) => {
       if (!state.future.length) return state;
