@@ -99,7 +99,7 @@ function calculateFamilyCentredPositions(
       const desiredLeft = cluster.targetCentre === null
         ? nextAvailableX === null ? 0 : nextAvailableX + CARD_GAP
         : cluster.targetCentre - cluster.width / 2;
-      const left = nextAvailableX === null ? desiredLeft : Math.max(desiredLeft, nextAvailableX + CARD_GAP);
+      const left: number = nextAvailableX === null ? desiredLeft : Math.max(desiredLeft, nextAvailableX + CARD_GAP);
       cluster.members.forEach((person, index) => {
         positions[person.id] = {
           x: left + index * CARD_PITCH,
