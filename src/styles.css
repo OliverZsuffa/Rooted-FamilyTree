@@ -178,10 +178,10 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
   position: relative;
   width: 18px;
   height: 18px;
-  border: 1px solid rgba(139, 118, 94, .65);
+  border: 0;
   border-radius: 50%;
-  background: #f2eee4;
-  box-shadow: 0 1px 4px rgba(72, 55, 35, .08);
+  background: transparent;
+  box-shadow: none;
 }
 .family-junction-dimmed { opacity: .2; }
 .family-junction .react-flow__handle { opacity: 0; }
