@@ -303,16 +303,26 @@ function App() {
         dimmed: !!selectedId && !highlightedIds.has(person.id),
       },
     }));
+    const positionsByPerson = new Map(personNodes.map((node) => [node.id, node.position]));
     const junctionNodes: JunctionFlowNode[] = getFamilyGroups(project)
       .filter((group) => group.parentIds.every((id) => visibleIds.has(id)) && group.childIds.some((id) => visibleIds.has(id)))
-      .map((group) => ({
-        id: group.id,
-        type: 'family',
-        position: automatic[group.id] ?? { x: 0, y: 0 },
-        data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
-        draggable: false,
-        selectable: false,
-      }));
+      .map((group) => {
+        const parents = group.parentIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
+        const children = group.childIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
+        const points = [...parents, ...children];
+        const position = parents.length && children.length ? {
+          x: points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9,
+          y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
+        } : automatic[group.id] ?? { x: 0, y: 0 };
+        return {
+          id: group.id,
+          type: 'family',
+          position,
+          data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
+          draggable: false,
+          selectable: false,
+        };
+      });
     return [...personNodes, ...junctionNodes];
   }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
   useEffect(() => {
