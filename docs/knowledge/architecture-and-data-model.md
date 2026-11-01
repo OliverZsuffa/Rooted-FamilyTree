@@ -1,27 +1,37 @@
 # Architecture and data model
 
-## Planned architecture
+## Implemented architecture
 
 - React, TypeScript, and Vite.
-- React Flow is the interactive canvas, not the source of truth.
-- ELK.js arranges the derived visual graph.
-- Domain entities and relationship rules remain independent of canvas state.
+- React Flow renders the interactive canvas. It is not the source of truth.
+- ELK.js calculates automatic graph positions.
+- Zod validates the versioned project schema.
+- Domain relationship and generation logic lives outside React components.
+- IndexedDB stores one local project.
 
-## Planned domain entities
+## Domain entities
 
-- People: standardized name and life dates, flexible custom attributes, and selected card attribute.
-- Parentage: typed biological, adoptive, step-parent, or guardian relationship.
-- Partnerships: typed marriage or non-marital partnership with optional dates.
-- Project metadata and persisted visual layout preferences.
+- People have a name, optional birth and death dates, flexible custom attributes, and an optional selected card attribute.
+- Parentage records distinguish biological, adoptive, step-parent, and guardian relationships.
+- Partnership records distinguish marriage and non-marital partnership, with optional start and end dates.
+- Project metadata stores the schema version and manual layout coordinates.
+
+People and relationships are separate records. Siblings are derived from shared biological or adoptive parents.
 
 ## Generation rules
 
-Biological and adoptive parenthood determine generations. Step-parent and guardian relationships do not. Marriage and partnership do not affect generation. Generations are strict and cannot be manually overridden.
+Biological and adoptive parenthood determine generations. Step-parent and guardian relationships do not. Marriage and partnership do not affect generation.
 
-The implementation must reject circular ancestry and any parentage that would assign incompatible generations. Sibling relationships are derived from shared parents.
+Generation calculation works per connected ancestry component. Relative offsets allow a newly connected parent to join the correct generation even if that person was previously an isolated entry. A topological pass rejects circular ancestry. Conflicting generation offsets are rejected.
 
 ## Layout boundary
 
-The visual graph is derived from the domain data. Partnership junction nodes are used to render a marriage/partnership symbol and connect shared children. Manual coordinates are presentation preferences and must not alter relationships or generation assignments.
+The visual graph is derived from domain data. ELK.js calculates default horizontal positions. Generation rows determine vertical placement. Users can drag people horizontally within their calculated generation. Manual coordinates are stored separately from relationships and survive ordinary edits.
 
-This document describes the approved product direction; implementation details should be updated when verified in code.
+Where two partnered people are both connected as parents to a child, the canvas renders a shared partnership junction. Other parentage links remain direct edges. A partnership without shared children is rendered as a line with a small symbol.
+
+## Current implementation limitations
+
+- Partnership junctions are visualized, but the layout algorithm does not yet optimize junction positions as part of the ELK graph.
+- Complex mobile trees still need real-device interaction testing.
+- Automated domain tests exist; persistence and full browser interaction tests remain to be added.
