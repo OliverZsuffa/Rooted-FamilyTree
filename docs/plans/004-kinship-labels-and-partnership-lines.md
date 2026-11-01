@@ -18,7 +18,7 @@
 ### Proposed implementation
 
 - Add explicit left and right handles for partnership connections, separate from the top and bottom parentage handles.
-- Route partnership edges from the inward facing sides of the two partner cards toward a small central junction.
+- Route partnership edges directly between inward-facing side handles on the two person cards. Use a restrained Bezier curve and orient the handles according to horizontal card order.
 - Use a restrained curved or shallow angled route. It should not be a straight line, but should avoid large loops and card overlaps.
 - For partnerships without shared children, use the same side attachment strategy and retain the marriage or partnership symbol.
 - Keep parentage connections on their existing top/bottom routing.
@@ -27,7 +27,7 @@
 ### Tests
 
 - Partnership without children connects through the side anchors and retains its symbol.
-- Partnership with shared children uses the central junction and side anchored partner segments.
+- Partnership with shared children remains a separate partnership line while family parentage is routed through family junctions.
 - Multiple partnerships do not create overlapping or reversed routes where avoidable.
 - Existing parentage edge routing remains unchanged.
 - All edge endpoints remain valid when nodes are filtered or hidden.
@@ -160,14 +160,14 @@ The list is derived from the tree and updates immediately after relationship or 
 
 In the marriage editor, keep name changes optional and visually secondary to the marriage details. In the person details panel, show previous names with their effective dates and the associated marriage where available.
 
-The exact placement and wording should be confirmed before implementation.
+The presentation is resolved: calculated kinship appears as a compact Family connections list in the selected person's details panel. Previous names appear in a separate Previous names list with the effective date and marriage association. Gender is edited in the person editor. Marriage name changes are an optional secondary section in the marriage editor.
 
 ## 7. Compatibility and validation
 
 - Keep the project schema version unchanged if the optional fields can be safely defaulted by the existing Zod schema.
 - Verify old JSON backups without gender, name history, or marriage name-change data still import.
 - Verify gender and name history survive export and re-import.
-- Validate referenced marriage IDs and reject malformed or contradictory name-change records.
+- Validate that every marriage name-change participant is one of the two partners and reject duplicate name-history IDs. A name-history entry may retain its partnership ID after the partnership is deleted, so a missing historical marriage record is valid.
 - No remote resources or services.
 
 ## 8. Verification
@@ -181,4 +181,4 @@ The exact placement and wording should be confirmed before implementation.
 
 ## 9. Delivery
 
-Implementation is approved. Implement on `request/004-kinship-labels-and-partnership-lines`, document actual test results, and open a PR. Merge only after the previously granted explicit approval and after required checks pass.
+Implementation is in progress on `request/004-kinship-labels-and-partnership-lines`. The family-group, kinship, gender, name-history, and partnership routing changes are implemented with domain tests. Run the full CI suite, record the actual result, open a PR, and merge using the previously granted approval only after required checks pass.
