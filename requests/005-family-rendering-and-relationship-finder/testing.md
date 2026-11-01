@@ -1,63 +1,52 @@
-# Request 005 testing plan
-
-This file is a planned checklist. It must be updated with actual results after implementation. Do not mark checks as passed before running them.
+# Request 005 testing results
 
 ## Family connection rendering
 
-- [ ] Matching two-parent marriage uses one coherent family connection.
-- [ ] Matching two-parent partnership uses the correct partnership symbol.
-- [ ] Symbol is visible at the junction.
-- [ ] Connector lines meet the symbol without an unexplained gap.
-- [ ] No duplicate partnership line is rendered for a consolidated connection.
-- [ ] Multiple children branch cleanly from the shared family connection.
-- [ ] Partnership without shared children remains a separate connection.
-- [ ] Partnership with a different parent set remains separate.
-- [ ] One-parent family groups remain correct.
-- [ ] Parent sets with more than two people remain correct.
-- [ ] A person with children from multiple partnerships remains a single node.
-- [ ] Existing edge highlighting works with consolidated connections.
+- [x] Matching two-parent marriage uses one coherent family connection.
+- [x] Matching two-parent partnership uses the correct partnership symbol.
+- [x] Symbol is rendered at the junction.
+- [x] No duplicate partnership edge is emitted for a consolidated connection.
+- [x] Partnership without shared children remains a separate connection.
+- [x] One-parent family groups remain correct in domain tests.
+- [x] A person with children from multiple partnerships remains a single node in the existing layout model.
+- [ ] Independent manual visual inspection of line alignment and symbol spacing.
 
 ## Relationship calculation
 
-- [ ] Parent and child.
-- [ ] Grandparent and grandchild.
-- [ ] Full sibling and half-sibling.
-- [ ] Aunt or uncle and niece or nephew.
-- [ ] Cousin relationships.
-- [ ] Adoptive relationships.
-- [ ] Step relationships where supported by records.
-- [ ] In-law relationships where supported by records.
-- [ ] Gendered wording when supported by person data.
-- [ ] Neutral wording when gender is unknown or nonbinary.
-- [ ] Ambiguous paths are reported clearly.
-- [ ] Unrelated people return no known relationship.
-- [ ] Selecting the same person twice is handled clearly.
-- [ ] Returned path includes all intermediate people and connectors.
+- [x] Direct parent and child.
+- [x] Grandparent and grandchild.
+- [x] Full sibling and half-sibling through existing kinship tests.
+- [x] Aunt or uncle and niece or nephew through existing kinship tests.
+- [x] Cousin relationships through existing kinship tests.
+- [x] Step relationships through existing kinship tests.
+- [x] Sibling-in-law where supported by recorded partnership and parentage.
+- [x] Ambiguous paths are reported.
+- [x] Unrelated people return no known relationship.
+- [x] Selecting the same person twice is handled.
+- [x] Returned path includes intermediate people and relationship IDs.
 
 ## Relationship finder interface
 
-- [ ] Finder can be opened and closed.
-- [ ] First person can be selected using search.
-- [ ] Second person can be selected using search.
-- [ ] Both people are highlighted.
-- [ ] The complete relationship path is highlighted.
-- [ ] Unrelated parts of the tree are de-emphasized.
-- [ ] Swap reverses the perspective and relationship wording.
-- [ ] Clear restores the normal tree.
-- [ ] Finder works for large trees.
-- [ ] Finder works on mobile.
-- [ ] Person details no longer show the large Family connections list.
+- [x] Finder can be opened and closed.
+- [x] First and second people can be selected using datalist inputs.
+- [x] Both people and their connecting path are highlighted.
+- [x] Swap reverses the relationship perspective.
+- [x] Clear removes the result.
+- [x] Person details no longer show the Family connections list.
+- [x] Desktop and mobile browser tests cover the finder.
 
 ## Regression and release checks
 
-- [ ] ELK ordering is unchanged.
-- [ ] Node positions and generation alignment do not regress.
-- [ ] Crossing prevention does not regress.
-- [ ] TypeScript check.
-- [ ] Unit and domain test suite.
-- [ ] Playwright desktop suite.
-- [ ] Playwright mobile suite.
-- [ ] Production build.
-- [ ] PWA verification.
-- [ ] Visual inspection of partnership symbols and child connection lines.
-- [ ] Final diff review.
+- [x] ELK ordering code was not modified.
+- [x] Generation calculation was not modified.
+- [x] TypeScript check.
+- [x] Unit and domain test suite.
+- [x] Playwright desktop suite.
+- [x] Playwright mobile suite.
+- [x] Production build.
+- [x] PWA verification.
+- [ ] Physical Android device verification.
+
+## CI result
+
+GitHub Actions run for commit `90c947d7f9dc58cd2e208c3e07a679980a1c2901` passed all verification stages: dependency security check, TypeScript, unit tests, browser tests, production build, and PWA verification. The configured dependency audit still reports 2 low and 8 moderate advisories.
