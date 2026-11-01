@@ -4,9 +4,9 @@ import {
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { Check, Download, GitFork, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
-import { getKinshipRows } from './domain/kinship';
+import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
 import { getFamilyGroups } from './domain/familyGroups';
@@ -23,7 +23,7 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ dimmed: boolean }, 'family'>;
+type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -48,8 +48,9 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded parent group">
+    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded family connection">
       <Handle type="target" position={Position.Top} />
+      {data.symbol && <span className="family-junction-symbol" aria-label={data.symbol === '♥' ? 'Marriage' : 'Partnership'}>{data.symbol}</span>}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -111,6 +112,11 @@ function App() {
   const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [relationshipFinderOpen, setRelationshipFinderOpen] = useState(false);
+  const [relationshipFirstId, setRelationshipFirstId] = useState('');
+  const [relationshipSecondId, setRelationshipSecondId] = useState('');
+  const [relationshipFirstQuery, setRelationshipFirstQuery] = useState('');
+  const [relationshipSecondQuery, setRelationshipSecondQuery] = useState('');
   const importInput = useRef<HTMLInputElement>(null);
   const [needRefresh, setNeedRefresh] = useState(false);
   const { updateServiceWorker } = useRegisterSW({ immediate: true, onNeedRefresh: () => setNeedRefresh(true) });
@@ -289,6 +295,20 @@ function App() {
     return highlighted;
   }, [project, selectedId]);
 
+  const relationshipPath = useMemo(() => project && relationshipFirstId && relationshipSecondId
+    ? findRelationshipPath(project, relationshipFirstId, relationshipSecondId) : null,
+  [project, relationshipFirstId, relationshipSecondId]);
+  const relationshipHighlightIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (relationshipFinderOpen) {
+      if (relationshipPath) {
+        relationshipPath.personIds.forEach((id) => ids.add(id));
+        relationshipPath.familyGroupIds.forEach((id) => ids.add(id));
+      } else if (relationshipFirstId) ids.add(relationshipFirstId);
+    }
+    return ids;
+  }, [relationshipFinderOpen, relationshipPath, relationshipFirstId]);
+
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
@@ -300,7 +320,7 @@ function App() {
       data: {
         person,
         selected: person.id === selectedId,
-        dimmed: !!selectedId && !highlightedIds.has(person.id),
+        dimmed: relationshipFinderOpen ? !relationshipHighlightIds.has(person.id) : !!selectedId && !highlightedIds.has(person.id),
       },
     }));
     const positionsByPerson = new Map(personNodes.map((node) => [node.id, node.position]));
@@ -318,21 +338,31 @@ function App() {
           id: group.id,
           type: 'family',
           position,
-          data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
+          data: {
+            dimmed: relationshipFinderOpen
+              ? !relationshipHighlightIds.has(group.id) && !group.parentIds.some((id) => relationshipHighlightIds.has(id)) && !group.childIds.some((id) => relationshipHighlightIds.has(id))
+              : !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)),
+            symbol: group.parentIds.length === 2 ? (() => {
+              const partnership = project.partnerships.find((item) => [item.person1Id, item.person2Id].sort().join('|') === group.parentIds.join('|'));
+              return partnership ? (partnership.type === 'marriage' ? '♥' : '♡') : null;
+            })() : null,
+          },
           draggable: false,
           selectable: false,
         };
       });
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds, relationshipFinderOpen, relationshipHighlightIds]);
   useEffect(() => {
     setFlowNodes(nodes);
   }, [nodes]);
 
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
-  }, [project, nodes, selectedId, highlightedIds]);
+    const activeId = relationshipFinderOpen ? relationshipFirstId || null : selectedId;
+    const activeHighlights = relationshipFinderOpen ? relationshipHighlightIds : highlightedIds;
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), activeId, activeHighlights, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
+  }, [project, nodes, selectedId, highlightedIds, relationshipFinderOpen, relationshipFirstId, relationshipHighlightIds]);
 
   const exportProject = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
@@ -585,6 +615,7 @@ function App() {
           <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
           <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
+          <button className="icon-button" aria-label="Find relationship" title="Find relationship" onClick={() => { setRelationshipFinderOpen(true); setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); setSearch(''); setSearchOpen(false); setSelectedId(null); }}><GitFork size={17} /></button>
           <button className="icon-button desktop-only" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
           <button className="icon-button desktop-only" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
           <input ref={importInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importProject(event.target.files?.[0])} />
@@ -608,6 +639,16 @@ function App() {
       ) : (
         <section className="tree-workspace">
           <div className="tree-hint">Select a person to view their details. Drag to arrange within each generation.</div>
+          {relationshipFinderOpen && (
+            <section className="relationship-finder" aria-label="Relationship finder">
+              <div className="finder-heading"><strong>Find relationship</strong><button className="icon-button" aria-label="Close relationship finder" onClick={() => { setRelationshipFinderOpen(false); setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); }}><X size={15} /></button></div>
+              <label>From<input list="relationship-people" value={relationshipFirstQuery} placeholder="Choose first person" onChange={(event) => { const value = event.target.value; setRelationshipFirstQuery(value); setRelationshipFirstId(project.people.find((person) => person.name.toLowerCase() === value.trim().toLowerCase())?.id ?? ''); }} /></label>
+              <label>To<input list="relationship-people" value={relationshipSecondQuery} placeholder="Choose second person" onChange={(event) => { const value = event.target.value; setRelationshipSecondQuery(value); setRelationshipSecondId(project.people.find((person) => person.name.toLowerCase() === value.trim().toLowerCase())?.id ?? ''); }} /></label>
+              <datalist id="relationship-people">{project.people.map((person) => <option key={person.id} value={person.name} />)}</datalist>
+              {relationshipFirstId && relationshipSecondId && <div className="finder-result">{relationshipPath ? <><strong>{relationshipPath.label}</strong>{relationshipPath.ambiguous && <p>There are {relationshipPath.alternativeCount + 1} equally short recorded paths. One is highlighted.</p>}</> : <strong>No recorded relationship path found.</strong>}</div>}
+              <div className="finder-actions"><button className="text-button" disabled={!relationshipFirstId || !relationshipSecondId} onClick={() => { setRelationshipFirstId(relationshipSecondId); setRelationshipSecondId(relationshipFirstId); setRelationshipFirstQuery(relationshipSecondQuery); setRelationshipSecondQuery(relationshipFirstQuery); }}>Swap</button><button className="text-button" onClick={() => { setRelationshipFirstId(''); setRelationshipSecondId(''); setRelationshipFirstQuery(''); setRelationshipSecondQuery(''); }}>Clear</button></div>
+            </section>
+          )}
           {search && !nodes.some((node) => node.type === 'person') && <div className="search-empty">No matching people.</div>}
           <ReactFlow
             nodes={flowNodes}
@@ -644,14 +685,6 @@ function App() {
               <h2>{selectedPerson.name || 'Unnamed person'}</h2>
               <p className="panel-dates">{selectedPerson.birthDate || 'Birth date unknown'}{selectedPerson.deathDate ? ` · ${selectedPerson.deathDate}` : ''}</p>
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
-              {getKinshipRows(project, selectedPerson.id).length > 0 && (
-                <div className="relationship-list">
-                  <span className="relationship-heading">Family connections</span>
-                  {getKinshipRows(project, selectedPerson.id).map(({ person, label }) => (
-                    <div className="relationship-row" key={person.id}><span>{person.name} · {label}</span></div>
-                  ))}
-                </div>
-              )}
               {selectedPerson.nameHistory.length > 0 && (
                 <div className="relationship-list">
                   <span className="relationship-heading">Previous names</span>

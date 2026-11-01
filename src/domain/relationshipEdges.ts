@@ -11,6 +11,13 @@ export function buildRelationshipEdges(
 ): Edge[] {
   const visibleIds = new Set(visibleNodeIds);
   const result: Edge[] = [];
+  const familyGroups = getFamilyGroups(project);
+  const consolidatedPartnershipIds = new Set<string>();
+  for (const group of familyGroups) {
+    if (group.parentIds.length !== 2 || !visibleIds.has(group.id) || !group.parentIds.every((id) => visibleIds.has(id)) || !group.childIds.some((id) => visibleIds.has(id))) continue;
+    const partnership = project.partnerships.find((item) => [item.person1Id, item.person2Id].sort().join('|') === group.parentIds.join('|'));
+    if (partnership) consolidatedPartnershipIds.add(partnership.id);
+  }
 
   for (const group of getFamilyGroups(project)) {
     if (!visibleIds.has(group.id)) continue;
@@ -54,6 +61,7 @@ export function buildRelationshipEdges(
   }
 
   for (const partnership of project.partnerships) {
+    if (consolidatedPartnershipIds.has(partnership.id)) continue;
     if (!visibleIds.has(partnership.person1Id) || !visibleIds.has(partnership.person2Id)) continue;
     result.push({
       id: partnership.id,
@@ -73,7 +81,7 @@ export function buildRelationshipEdges(
     ...edge,
     style: {
       ...edge.style,
-      opacity: !selectedId || (edge.source.startsWith('family:') ? highlightedIds.has(edge.target) : edge.target.startsWith('family:') ? highlightedIds.has(edge.source) : highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15,
+      opacity: !selectedId || (() => { const groupId = edge.id.includes(':parent:') || edge.id.includes(':child:') ? edge.id.slice(0, edge.id.lastIndexOf(':')) : null; if (groupId && highlightedIds.has(groupId)) return true; return edge.source.startsWith('family:') ? highlightedIds.has(edge.target) : edge.target.startsWith('family:') ? highlightedIds.has(edge.source) : highlightedIds.has(edge.source) && highlightedIds.has(edge.target); })() ? 1 : 0.15,
     },
   }));
 }

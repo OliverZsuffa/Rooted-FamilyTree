@@ -34,7 +34,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
   await page.locator('.react-flow__node-person').filter({ hasText: 'Ada Example' }).click();
   await expect(page.locator('.person-panel h2')).toHaveText('Ada Example');
-  await expect(page.locator('.person-panel .relationship-list').first()).toContainText('Ben Example · parent');
+  await expect(page.locator('.person-panel .relationship-list').first()).toContainText('biological parent: Ben Example');
 
   await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
   await page.locator('.react-flow__node-person').filter({ hasText: 'Cara Example' }).click();
@@ -66,6 +66,43 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await page.getByRole('button', { name: 'Search people' }).click();
   await page.getByPlaceholder('Find someone…').fill('Cara Example');
   await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' })).toBeVisible();
+});
+
+test('consolidates matching parent partnerships and finds relationships interactively', async ({ page }) => {
+  await page.goto('/');
+  await addPerson(page, 'Finder Ada');
+  await addPerson(page, 'Finder Ben');
+  await addPerson(page, 'Finder Cara');
+
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Finder Ada' }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Connect to').selectOption({ label: 'Finder Cara' });
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Finder Ben' }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Connect to').selectOption({ label: 'Finder Cara' });
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Finder Ada' }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Relationship type').selectOption('marriage');
+  await page.getByLabel('Connect to').selectOption({ label: 'Finder Ben' });
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+
+  await expect(page.locator('.family-junction-symbol')).toHaveText('♥');
+  await expect(page.locator('.react-flow__edge')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Find relationship' }).click();
+  await page.getByRole('combobox', { name: 'From' }).fill('Finder Ada');
+  await page.getByRole('combobox', { name: 'To' }).fill('Finder Cara');
+  await expect(page.locator('.finder-result')).toContainText('child');
+  await page.getByRole('button', { name: 'Swap' }).click();
+  await expect(page.locator('.finder-result')).toContainText('parent');
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await expect(page.locator('.finder-result')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close relationship finder' }).click();
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Finder Cara' }).click();
+  await expect(page.getByText('Family connections')).toHaveCount(0);
 });
 
 test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }, testInfo) => {
