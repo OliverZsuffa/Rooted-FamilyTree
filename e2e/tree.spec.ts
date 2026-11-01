@@ -39,6 +39,12 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+  await page.waitForTimeout(450);
+  await page.reload();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara Example' })).toBeVisible();
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2);
 });
 
 test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }, testInfo) => {
@@ -61,4 +67,21 @@ test('mobile canvas fits the screen and supports dragging a person card', async 
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect.poll(() => node.evaluate((element) => (element as HTMLElement).style.transform)).not.toBe(before);
   await session.detach();
+});
+
+
+test('fits narrow phone widths without horizontal overflow', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-chromium');
+  await page.goto('/');
+  await addPerson(page, 'Narrow Screen Person');
+  await page.getByRole('button', { name: 'Close details' }).click();
+  for (const width of [320, 360, 390]) {
+    await page.setViewportSize({ width, height: 760 });
+    await page.waitForTimeout(150);
+    const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(documentWidth).toBeLessThanOrEqual(width);
+    const canvas = await page.locator('.tree-workspace .react-flow').boundingBox();
+    expect(canvas?.width).toBeGreaterThanOrEqual(width - 1);
+    expect(canvas?.height).toBeGreaterThan(300);
+  }
 });
