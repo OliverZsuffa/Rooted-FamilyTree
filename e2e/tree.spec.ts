@@ -31,11 +31,12 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await page.getByRole('button', { name: 'Save relationship' }).click();
 
   await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
-  await page.locator('.react-flow__node').filter({ hasText: 'Ada Example' }).click({ force: true });
-  await expect(page.getByText('Ben Example · parent')).toBeVisible();
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Ada Example' }).click();
+  await expect(page.locator('.person-panel h2')).toHaveText('Ada Example');
+  await expect(page.locator('.person-panel .relationship-list').first()).toContainText('Ben Example · parent');
 
   await page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
-  await page.locator('.react-flow__node').filter({ hasText: 'Cara Example' }).click({ force: true });
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Cara Example' }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Gender').selectOption('female');
   await page.getByRole('button', { name: 'Save person' }).click();
