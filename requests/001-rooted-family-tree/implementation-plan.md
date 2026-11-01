@@ -1,6 +1,6 @@
 # Implementation plan: Rooted family tree
 
-**Status:** Awaiting Oliver's explicit approval. No application code has been implemented.
+**Status:** Approved by Oliver. Phase 1 foundation has been implemented on the request branch. Automated verification is pending.
 
 ## 1. Repository and baseline
 
