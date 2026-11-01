@@ -4,7 +4,7 @@ import {
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, GitFork, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { Check, Download, GitFork, LayoutGrid, Moon, Plus, Redo2, Search, Sprout, Sun, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
 import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
@@ -77,6 +77,15 @@ function syncGenerationRows(project: Project): Project {
 
 
 function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try { return window.localStorage.getItem('rooted-theme') === 'dark' ? 'dark' : 'light'; }
+    catch { return 'light'; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { window.localStorage.setItem('rooted-theme', theme); } catch { /* Theme still applies for this session. */ }
+  }, [theme]);
+
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStart = useRef<{ project: Project; id: string; position: { x: number; y: number } } | null>(null);
@@ -612,6 +621,7 @@ function App() {
         <a className="brand" href="./" aria-label="Rooted home"><span className="brand-mark"><Sprout size={19} strokeWidth={1.8} /></span><span>rooted</span></a>
         <div className="toolbar">
           <span className="save-state"><span className={`save-dot save-dot-${saveState}`} />{saveState === 'loading' ? 'Opening' : saveState === 'saving' ? 'Saving' : saveState === 'error' ? 'Save issue' : 'Saved'}</span>
+          <button className="icon-button" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'} onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
           <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
           <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
