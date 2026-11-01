@@ -30,8 +30,9 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
     return { success: false, error: 'A person card refers to a missing custom detail.' };
   }
   if (project.partnerships.some((item) => !people.has(item.person1Id)
-    || !people.has(item.person2Id) || item.person1Id === item.person2Id)) {
-    return { success: false, error: 'A partnership refers to a missing or identical person.' };
+    || !people.has(item.person2Id) || item.person1Id === item.person2Id
+    || (item.startDate && item.endDate && item.endDate < item.startDate))) {
+    return { success: false, error: 'A partnership contains an invalid person reference or date range.' };
   }
 
   const generations = calculateGenerations(project);
