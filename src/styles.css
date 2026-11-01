@@ -113,3 +113,12 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 .relationship-row button:last-child { display: grid; place-items: center; width: 24px; height: 24px; color: #a65342; background: transparent; }
 .no-relationships { margin: 2px 0; color: #9a8c7c; font-size: 10px; }
 .modal select:disabled { opacity: .65; }
+
+.mobile-backup-controls { display: none; }
+.person-panel { max-height: calc(100dvh - 150px); overflow-y: auto; }
+@media (max-width: 600px) {
+  .toolbar .save-state, .toolbar .desktop-only { display: none; }
+  .mobile-backup-controls { display: flex; align-items: center; gap: 2px; }
+  .footer > span:nth-child(2) { display: none; }
+  .person-panel { max-height: 52dvh; }
+}
