@@ -1,6 +1,6 @@
 # Testing plan: Request 002
 
-**Status:** Not yet implemented. No new tests have been run.
+**Status:** In progress. Regression coverage is being added; no new test results are available yet.
 
 ## Layout regression tests
 - [ ] Several unrelated people receive distinct positions.
@@ -48,6 +48,7 @@ Test at 320 px, 360 px, 390 px, 768 px, and desktop width.
 - [ ] Person panel does not make the tree unusable.
 - [ ] Dialog content is scrollable and submit controls remain reachable.
 - [ ] Touch pan, drag, and pinch zoom work in mobile browser emulation.
+- [ ] Dragging a person card on a mobile viewport updates its position and survives reload.
 - [ ] On-screen keyboard does not hide the active form field or save button.
 
 ## Deployment checks
