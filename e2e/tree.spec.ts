@@ -61,6 +61,11 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(3);
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' }).click();
+  await expect(page.getByText(/Cara Example to Cara New Example.*2020-01-01/)).toBeVisible();
+  await page.getByRole('button', { name: 'Search people' }).click();
+  await page.getByPlaceholder('Find someone…').fill('Cara Example');
+  await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' })).toBeVisible();
 });
 
 test('mobile canvas fits the screen and supports dragging a person card', async ({ page, browserName }, testInfo) => {
