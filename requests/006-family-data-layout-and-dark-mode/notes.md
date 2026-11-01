@@ -67,3 +67,9 @@ Commit `d04c44c14d119ecffd56108b94288dfd77a62753` passed GitHub Actions run `413
 - PWA build verification passed.
 
 This is a passing intermediate implementation checkpoint, not completion of the full request.
+
+
+Additional progress after the first green build:
+- Direct adoptive parent and adopted child labels are now distinguished when the recorded direct link is adoptive only.
+- Manual incompleteness styling is covered for parentage and partnership edges.
+- Family ordering now clusters children who share a recorded biological or adoptive parent. Overlapping groups merge into one soft ordering cluster, keeping half siblings together without duplicating people.

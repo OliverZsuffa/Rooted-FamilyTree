@@ -84,7 +84,40 @@ export async function calculateAutoPositions(
   }
   // ELK supplies family-aware ordering. A final collision pass guarantees readable card spacing.
   for (const [generation, people] of byGeneration) {
-    const ordered = [...people].sort((a, b) => (elkX.get(a.id) ?? 0) - (elkX.get(b.id) ?? 0) || a.id.localeCompare(b.id));
+    // Cluster people who share a recorded parent so full and half siblings stay adjacent.
+    // Overlapping family groups naturally merge into one soft ordering cluster.
+    const generationIds = new Set(people.map((person) => person.id));
+    const clusterParent = new Map(people.map((person) => [person.id, person.id]));
+    const findCluster = (id: string): string => {
+      const parent = clusterParent.get(id) ?? id;
+      if (parent === id) return id;
+      const root = findCluster(parent);
+      clusterParent.set(id, root);
+      return root;
+    };
+    const unionCluster = (first: string, second: string) => {
+      const firstRoot = findCluster(first), secondRoot = findCluster(second);
+      if (firstRoot !== secondRoot) clusterParent.set(secondRoot, firstRoot);
+    };
+    const childrenByParent = new Map<string, string[]>();
+    for (const relation of project.parentage) {
+      if (relation.type !== 'biological_parent' && relation.type !== 'adoptive_parent') continue;
+      if (!generationIds.has(relation.childId)) continue;
+      childrenByParent.set(relation.parentId, [...(childrenByParent.get(relation.parentId) ?? []), relation.childId]);
+    }
+    for (const siblingIds of childrenByParent.values()) {
+      const uniqueIds = [...new Set(siblingIds)];
+      for (let index = 1; index < uniqueIds.length; index += 1) unionCluster(uniqueIds[0], uniqueIds[index]);
+    }
+    const clusters = new Map<string, typeof people>();
+    for (const person of people) {
+      const root = findCluster(person.id);
+      clusters.set(root, [...(clusters.get(root) ?? []), person]);
+    }
+    const ordered = [...clusters.values()]
+      .map((cluster) => cluster.sort((a, b) => (elkX.get(a.id) ?? 0) - (elkX.get(b.id) ?? 0) || a.id.localeCompare(b.id)))
+      .sort((a, b) => Math.min(...a.map((person) => elkX.get(person.id) ?? 0)) - Math.min(...b.map((person) => elkX.get(person.id) ?? 0)) || a[0].id.localeCompare(b[0].id))
+      .flat();
     let nextAvailableX = 0;
     for (const person of ordered) {
       const x = Math.max(elkX.get(person.id) ?? fallback[person.id]?.x ?? 0, nextAvailableX);

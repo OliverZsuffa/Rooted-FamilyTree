@@ -46,7 +46,9 @@ Implementation is in progress. The checks below distinguish verified work from r
 - [ ] Verify partial precision partnership dates in the interface.
 
 ## Relationship completeness
-- [ ] Verify manual incomplete parentage and partnership flags through edit, save, reload and export.
+- [x] Unit tests verify incomplete parentage and partnership edges use the warning colour token.
+- [x] Browser test verifies a manually incomplete parentage marker persists across reload.
+- [ ] Verify manual incomplete flags through export and import.
 - [ ] Verify red markers on all relationship line types and family junctions in both themes.
 - [ ] Verify no incompleteness overview or dashboard is present.
 
@@ -57,13 +59,16 @@ Implementation is in progress. The checks below distinguish verified work from r
 - [x] Cousin degree and removal.
 - [x] Half siblings and step relationships.
 - [x] Ambiguous shortest paths are reported.
-- [ ] Add dedicated tests for adoption and complex multiple-parent ambiguity.
+- [x] Direct adoptive parent and adopted child labels.
+- [ ] Add dedicated tests for complex multiple-parent ambiguity.
 - [ ] Verify relationship finder label and highlighted path agreement for complex kinship structures.
 
 ## Layout
 - [x] Family junction centred between parent and child group centres.
+- [x] Full and half siblings sharing recorded parents are clustered in the same generation.
 - [x] Existing disconnected-node collision test passes.
-- [ ] Verify larger sibling groups remain contiguous.
+- [x] Verify a full and half sibling cluster remains contiguous.
+- [ ] Verify larger real world sibling groups and overlapping generations visually.
 - [ ] Verify parents are placed toward outer sides where feasible.
 - [ ] Verify overlapping family groups and multiple partnerships.
 - [ ] Inspect edge crossings and edge routing on complex real trees.

@@ -201,6 +201,7 @@ test('persists manually incomplete relationship markers', async ({ page }) => {
   await page.getByRole('checkbox', { name: 'Mark this relationship as incomplete' }).check();
   await page.getByRole('button', { name: 'Save relationship' }).click();
   await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
+  await page.waitForTimeout(450);
   await page.reload();
   await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
 });
