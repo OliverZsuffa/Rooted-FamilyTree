@@ -465,7 +465,7 @@ function App() {
       for (const change of moved) {
         if (change.type !== 'position' || !change.position) continue;
         const generation = result.generations.get(change.id) ?? 0;
-        manualPositions[change.id] = { x: change.position.x, y: generation * 190 };
+        manualPositions[change.id] = { x: change.position.x, y: Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, change.position.y)) };
       }
       return { ...current, layout: { manualPositions } };
     }, false);
@@ -520,7 +520,7 @@ function App() {
         </section>
       ) : (
         <section className="tree-workspace">
-          <div className="tree-hint">Select a person to view their details. Drag to arrange within a generation.</div>
+          <div className="tree-hint">Select a person to view their details. Drag to arrange within each generation.</div>
           <ReactFlow
             nodes={nodes}
             edges={edges}
