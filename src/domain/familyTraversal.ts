@@ -141,7 +141,8 @@ function optimiseRows(
     const seen = new Set<string>();
     const ordered: string[][] = [];
     for (const id of rows.get(generation) ?? []) {
-      const key = JSON.stringify(parentsByChild.get(id) ?? []);
+      const parentIds = parentsByChild.get(id) ?? [];
+      const key = parentIds.length ? JSON.stringify(parentIds) : JSON.stringify(['root', id]);
       if (!seen.has(key)) {
         seen.add(key);
         ordered.push(blocks.get(key)!);
