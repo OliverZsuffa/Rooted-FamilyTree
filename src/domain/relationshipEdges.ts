@@ -41,8 +41,8 @@ export function buildRelationshipEdges(
         target: group.id,
         sourceHandle: 'parentage-out-bottom',
         targetHandle: 'family-in-top',
-        type: 'smoothstep',
-        pathOptions: { offset: 24 + (routeLanes.get(group.id) ?? 0) * 14, borderRadius: 10 },
+        type: 'familyRoute',
+        data: { routeLane: routeLanes.get(group.id) ?? 0 },
         style: { stroke: project.parentage.some((relation) => relation.parentId === parentId && group.childIds.includes(relation.childId) && relation.manualIncomplete) ? 'var(--edge-incomplete)' : 'var(--edge-parentage)', strokeWidth: 1.5 },
       });
     }
@@ -54,8 +54,8 @@ export function buildRelationshipEdges(
         target: childId,
         sourceHandle: 'family-out-bottom',
         targetHandle: 'parentage-in-top',
-        type: 'smoothstep',
-        pathOptions: { offset: 24 + (routeLanes.get(group.id) ?? 0) * 14, borderRadius: 10 },
+        type: 'familyRoute',
+        data: { routeLane: routeLanes.get(group.id) ?? 0 },
         style: { stroke: project.parentage.some((relation) => relation.childId === childId && group.parentIds.includes(relation.parentId) && relation.manualIncomplete) ? 'var(--edge-incomplete)' : 'var(--edge-parentage)', strokeWidth: 1.5 },
       });
     }
