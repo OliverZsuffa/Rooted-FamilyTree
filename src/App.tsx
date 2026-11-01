@@ -1,30 +1,63 @@
-import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
-  Handle, Position,
+  Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
-import { calculateAutoPositions } from './domain/layout';
+import { buildRelationshipEdges } from './domain/relationshipEdges';
+import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-type PersonNodeData = { person: Person; selected: boolean; dimmed: boolean };
+type PersonNodeData = {
+  person: Person;
+  selected: boolean;
+  dimmed: boolean;
+  onTouchDragStart: (id: string, clientX: number, clientY: number, positionX: number, positionY: number) => void;
+  onTouchDragMove: (clientX: number, clientY: number) => void;
+  onTouchDragStop: () => void;
+};
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
 type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
-function PersonCard({ data }: NodeProps<PersonFlowNode>) {
+function PersonCard({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
+  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) return;
+    event.stopPropagation();
+    const touch = event.touches[0];
+    data.onTouchDragStart(data.person.id, touch.clientX, touch.clientY, positionAbsoluteX, positionAbsoluteY);
+  };
+  const handleTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      data.onTouchDragStop();
+      return;
+    }
+    event.stopPropagation();
+    const touch = event.touches[0];
+    data.onTouchDragMove(touch.clientX, touch.clientY);
+  };
+  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    data.onTouchDragStop();
+  };
   return (
-    <div className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}>
+    <div
+      className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
+      onTouchStartCapture={handleTouchStart}
+      onTouchMoveCapture={handleTouchMove}
+      onTouchEndCapture={handleTouchEnd}
+      onTouchCancelCapture={handleTouchEnd}
+    >
       <Handle type="target" position={Position.Top} />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
@@ -62,29 +95,16 @@ function syncGenerationRows(project: Project): Project {
   return { ...project, layout: { manualPositions } };
 }
 
-function arrange(project: Project): Record<string, { x: number; y: number }> {
-  const result = calculateGenerations(project);
-  if (!result.ok) return project.layout.manualPositions;
-  const bands = new Map<number, string[]>();
-  for (const person of project.people) {
-    const generation = result.generations.get(person.id) ?? 0;
-    bands.set(generation, [...(bands.get(generation) ?? []), person.id]);
-  }
-  const positions: Record<string, { x: number; y: number }> = {};
-  for (const [generation, ids] of bands) {
-    ids.forEach((id, index) => {
-      positions[id] = { x: index * 240, y: generation * 190 };
-    });
-  }
-  return positions;
-}
 
 function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStartProject = useRef<Project | null>(null);
+  const touchDrag = useRef<{ id: string; clientX: number; clientY: number; positionX: number; positionY: number; before: Project } | null>(null);
+  const reactFlowInstance = useRef<ReactFlowInstance<FlowNode, Edge> | null>(null);
+  const lastFittedStructure = useRef('');
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
-  const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [autoLayout, setAutoLayout] = useState<{ key: string; positions: Record<string, { x: number; y: number }> }>({ key: '', positions: {} });
   const [storageReady, setStorageReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveState, setSaveState] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
@@ -119,6 +139,44 @@ function App() {
     if (recordHistory) setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
     projectRef.current = updated;
     setProject(updated);
+  }, []);
+
+  const onPersonTouchDragStart = useCallback((
+    id: string, clientX: number, clientY: number, positionX: number, positionY: number,
+  ) => {
+    const before = projectRef.current;
+    if (!before || !before.people.some((person) => person.id === id)) return;
+    touchDrag.current = { id, clientX, clientY, positionX, positionY, before };
+  }, []);
+
+  const onPersonTouchDragMove = useCallback((clientX: number, clientY: number) => {
+    const drag = touchDrag.current;
+    const current = projectRef.current;
+    const flow = reactFlowInstance.current;
+    if (!drag || !current || !flow) return;
+    const start = flow.screenToFlowPosition({ x: drag.clientX, y: drag.clientY });
+    const next = flow.screenToFlowPosition({ x: clientX, y: clientY });
+    const generations = calculateGenerations(current);
+    const generation = generations.ok ? generations.generations.get(drag.id) ?? 0 : 0;
+    const y = Math.max(generation * 190 - 45, Math.min(generation * 190 + 45, drag.positionY + next.y - start.y));
+    commitProject({
+      ...current,
+      layout: {
+        manualPositions: {
+          ...current.layout.manualPositions,
+          [drag.id]: { x: drag.positionX + next.x - start.x, y },
+        },
+      },
+    }, false);
+  }, [commitProject]);
+
+  const onPersonTouchDragStop = useCallback(() => {
+    const drag = touchDrag.current;
+    const after = projectRef.current;
+    if (drag && after && drag.before !== after) {
+      setHistory((state) => ({ past: [...state.past, drag.before].slice(-50), future: [] }));
+    }
+    touchDrag.current = null;
   }, []);
 
   const undo = () => {
@@ -205,16 +263,43 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [project, storageReady]);
 
+  const layoutKey = useMemo(() => project ? [
+    project.id,
+    ...project.people.map((person) => person.id).sort(),
+    '|',
+    ...project.parentage.map((relation) => `${relation.id}:${relation.parentId}:${relation.childId}:${relation.type}`).sort(),
+  ].join('|') : '', [project?.id, project?.people, project?.parentage]);
+
   useEffect(() => {
     if (!project) return;
     let active = true;
+    const fallback = createFallbackPositions(project);
+    setAutoLayout({ key: layoutKey, positions: fallback });
+    if (!project.people.length) return () => { active = false; };
     calculateAutoPositions(project).then((positions) => {
-      if (active && Object.keys(positions).length) setAutoPositions(positions);
+      if (active) setAutoLayout({ key: layoutKey, positions: { ...fallback, ...positions } });
     }).catch(() => {
-      if (active) setAutoPositions(arrange(project));
+      if (active) setAutoLayout({ key: layoutKey, positions: fallback });
     });
     return () => { active = false; };
-  }, [project?.people, project?.parentage]);
+  }, [layoutKey]);
+
+  useEffect(() => {
+    if (!project || !reactFlowInstance.current) return;
+    const structureKey = [
+      ...project.people.map((person) => person.id).sort(),
+      '|',
+      ...project.parentage.map((relation) => relation.id).sort(),
+      '|',
+      ...project.partnerships.map((partnership) => partnership.id).sort(),
+    ].join('|');
+    if (structureKey === lastFittedStructure.current) return;
+    lastFittedStructure.current = structureKey;
+    const frame = window.requestAnimationFrame(() => {
+      reactFlowInstance.current?.fitView({ padding: 0.25, duration: 220 });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [project?.people, project?.parentage, project?.partnerships]);
 
   useEffect(() => {
     if (selectedId && search && !project?.people.some((person) => person.id === selectedId && person.name.toLowerCase().includes(search.toLowerCase()))) setSelectedId(null);
@@ -260,13 +345,20 @@ function App() {
 
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
-    const automatic = Object.keys(autoPositions).length ? autoPositions : arrange(project);
+    const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
     const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()));
     const visibleIds = new Set(visiblePeople.map((person) => person.id));
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
       id: person.id, type: 'person',
       position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
-      data: { person, selected: person.id === selectedId, dimmed: !!selectedId && !highlightedIds.has(person.id) },
+      data: {
+        person,
+        selected: person.id === selectedId,
+        dimmed: !!selectedId && !highlightedIds.has(person.id),
+        onTouchDragStart: onPersonTouchDragStart,
+        onTouchDragMove: onPersonTouchDragMove,
+        onTouchDragStop: onPersonTouchDragStop,
+      },
     }));
     const junctionNodes: JunctionFlowNode[] = [];
     for (const partnership of project.partnerships) {
@@ -283,55 +375,10 @@ function App() {
       });
     }
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoPositions, highlightedIds]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds, onPersonTouchDragStart, onPersonTouchDragMove, onPersonTouchDragStop]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    const visibleIds = new Set(nodes.map((node) => node.id));
-    const result: Edge[] = [];
-    const consumedParentage = new Set<string>();
-    for (const partnership of project.partnerships) {
-      const sharedChildren = project.parentage.filter((relation) => relation.parentId === partnership.person1Id
-        && project.parentage.some((other) => other.childId === relation.childId && other.parentId === partnership.person2Id));
-      const junctionId = 'junction:' + partnership.id;
-      const visibleSharedChildren = sharedChildren.filter((child) => visibleIds.has(child.childId));
-      if (visibleSharedChildren.length && visibleIds.has(junctionId)) {
-        const firstRelation = sharedChildren[0];
-        const secondRelation = project.parentage.find((relation) => relation.childId === firstRelation.childId && relation.parentId === partnership.person2Id);
-        if (secondRelation) {
-          consumedParentage.add(firstRelation.id);
-          consumedParentage.add(secondRelation.id);
-          result.push(
-            { id: partnership.id + ':first', source: partnership.person1Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-            { id: partnership.id + ':second', source: partnership.person2Id, target: junctionId, type: 'smoothstep', style: { stroke: '#78805a', strokeWidth: 1.5 } },
-          );
-        }
-        for (const child of visibleSharedChildren) {
-          const partnerRelation = project.parentage.find((relation) => relation.childId === child.childId && relation.parentId === partnership.person2Id);
-          if (!partnerRelation) continue;
-          consumedParentage.add(child.id);
-          consumedParentage.add(partnerRelation.id);
-          result.push({ id: partnership.id + ':child:' + child.childId, source: junctionId, target: child.childId, type: 'smoothstep', style: { stroke: '#8b765e', strokeWidth: 1.5 } });
-        }
-      } else if (!visibleSharedChildren.length) {
-        result.push({
-          id: partnership.id, source: partnership.person1Id, target: partnership.person2Id,
-          type: 'straight', label: partnership.type === 'marriage' ? '♥' : '♡',
-          labelStyle: { fill: '#78805a', fontSize: 13 }, style: { stroke: '#78805a', strokeWidth: 1.5 },
-        });
-      }
-    }
-    for (const relation of project.parentage) {
-      if (consumedParentage.has(relation.id)) continue;
-      result.push({
-        id: relation.id, source: relation.parentId, target: relation.childId,
-        type: 'smoothstep', animated: false,
-        style: { stroke: relation.type === 'biological_parent' ? '#8b765e' : '#a99a83', strokeWidth: 1.5, strokeDasharray: relation.type === 'guardian' || relation.type === 'step_parent' ? '5 4' : undefined },
-      });
-    }
-    return result.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)).map((edge) => ({
-      ...edge,
-      style: { ...edge.style, opacity: !selectedId || (highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15 },
-    }));
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds);
   }, [project, nodes, selectedId, highlightedIds]);
 
   const exportProject = () => {
@@ -582,9 +629,16 @@ function App() {
             onNodeDragStop={onNodeDragStop}
             fitView
             fitViewOptions={{ padding: 0.25 }}
+            onInit={(instance) => {
+              reactFlowInstance.current = instance;
+              window.requestAnimationFrame(() => instance.fitView({ padding: 0.25 }));
+            }}
+            panOnDrag
+            nodesDraggable
+            selectionOnDrag={false}
+            zoomOnPinch
             minZoom={0.2}
             maxZoom={1.5}
-            nodesDraggable
             nodesConnectable={false}
             elementsSelectable
             proOptions={{ hideAttribution: true }}

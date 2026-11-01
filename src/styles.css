@@ -130,3 +130,44 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 .storage-warning { position: relative; z-index: 5; padding: 10px 16px; color: #854a3f; background: #f5e9e4; border-bottom: 1px solid #e8cfc6; text-align: center; font-size: 11px; }
 
 .person-card-dimmed, .partnership-junction-dimmed { opacity: .24; }
+
+
+/* Keep touch gestures inside the family-tree canvas so nodes can be dragged on phones. */
+.tree-workspace,
+.tree-workspace .react-flow,
+.tree-workspace .react-flow__pane,
+.tree-workspace .react-flow__node {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.tree-workspace .person-panel {
+  touch-action: pan-y;
+}
+
+@media (max-width: 600px) {
+  .app-shell { height: 100dvh; min-height: 100dvh; }
+  .tree-workspace { min-height: 0; height: 100%; flex: 1 1 auto; }
+  .tree-workspace .react-flow { height: 100%; }
+  .modal-backdrop { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
+  .modal { width: 100%; max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px); }
+  .person-panel { bottom: max(10px, env(safe-area-inset-bottom)); }
+}
+
+
+/* React Flow requires a definite canvas size. The workspace takes the remaining viewport height. */
+.app-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+}
+
+.tree-workspace {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+}
+
+.tree-workspace > .react-flow {
+  width: 100%;
+  height: 100%;
+}
