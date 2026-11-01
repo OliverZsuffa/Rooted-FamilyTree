@@ -1,22 +1,26 @@
 # PWA and offline behaviour
 
-## Requirements
+## Implementation
 
-- Rooted must be installable as a PWA on supported desktop and mobile browsers.
-- After the first successful online load and service-worker cache population, the application shell and all core family-tree operations must work offline.
-- IndexedDB stores user data. Service-worker caches store application assets only.
-- Do not depend on remote fonts, icon services, APIs, or other runtime network resources.
+- Vite PWA integration with Workbox generates the web app manifest and service worker.
+- The app uses a locally bundled SVG icon and system fonts.
+- The production build precaches HTML, JavaScript, CSS, SVG, and other static app assets.
+- Service-worker registration uses the PWA client hook. A new version prompts the user before updating.
+- The Vite base path and manifest scope are configured for `/Rooted-FamilyTree/`.
+- GitHub Pages deployment is defined in `.github/workflows/deploy.yml` and runs on pushes to `main`.
 
-## Planned implementation
+IndexedDB stores user data. Service-worker caches contain application assets only.
 
-Use the Vite PWA integration with Workbox to generate the web app manifest and service worker. Precache the production app shell and local static assets. Configure start URL, scope, icons, and service-worker registration for the GitHub Pages project subpath.
+## Offline expectations
 
-Offline acceptance includes launch/reload, editing people and relationships, search, layout, undo/redo, and JSON import/export.
+After the first successful online load and service-worker cache population, the app shell should launch without a network connection. People, relationships, search, layout, undo/redo, and JSON import/export use local code and IndexedDB.
 
-## Deployment caution
+No remote fonts, icon services, APIs, or hosted data are required at runtime.
 
-A GitHub Pages project site is hosted below a repository-specific path. Manifest URLs, icons, service-worker registration, scope, and navigation fallback must all respect Vite's configured base path.
+## Verification still required
 
-## Verification
-
-Test the deployed build after a successful online visit, then disable network access and verify the app remains usable after reload and app restart. Also test update behaviour without losing IndexedDB data or in-progress edits.
+- Confirm the deployed manifest, icon, service-worker URL, and scope under the project subpath.
+- Install the deployed PWA on supported desktop and mobile browsers.
+- Visit once online, then disable networking and verify launch, reload, editing, search, layout, undo/redo, import, and export.
+- Confirm update prompts do not affect IndexedDB data.
+- The first deployment and manual offline verification have not yet been performed.
