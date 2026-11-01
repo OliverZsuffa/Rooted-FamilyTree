@@ -41,24 +41,14 @@ describe('relationship edge construction', () => {
     expect(stepEdge).toMatchObject({ sourceHandle: 'parentage-out-bottom', targetHandle: 'parentage-in-top' });
   });
 
-  it('assigns separate deterministic lanes to overlapping family groups', () => {
+  it('does not assign artificial route lanes to family edges', () => {
     const project = fixture();
     project.parentage = [
       { id: 'a-d', type: 'biological_parent', parentId: 'a', childId: 'd' },
       { id: 'b-d', type: 'biological_parent', parentId: 'b', childId: 'd' },
-      { id: 'a-e', type: 'biological_parent', parentId: 'a', childId: 'e' },
-      { id: 'c-e', type: 'biological_parent', parentId: 'c', childId: 'e' },
     ];
-    const visible = ['a', 'b', 'c', 'd', 'e', 'family:a|b', 'family:a|c'];
-    const positions = { a: { x: 0, y: 0 }, b: { x: 220, y: 0 }, c: { x: 440, y: 0 }, d: { x: 120, y: 190 }, e: { x: 340, y: 190 } };
-    const edges = buildRelationshipEdges(project, visible, null, new Set(), positions);
-    const first = edges.find((edge) => edge.id === 'family:a|b:parent:a');
-    const second = edges.find((edge) => edge.id === 'family:a|c:parent:a');
-    expect(first?.data?.routeLane).toBeDefined();
-    expect(second?.data?.routeLane).toBeDefined();
-    expect(first?.data?.routeLane).not.toEqual(second?.data?.routeLane);
-    const reordered = buildRelationshipEdges({ ...project, parentage: [...project.parentage].reverse() }, visible, null, new Set(), positions);
-    expect(reordered.find((edge) => edge.id === first?.id)?.data?.routeLane).toEqual(first?.data?.routeLane);
+    const edges = buildRelationshipEdges(project, ['a', 'b', 'd', 'family:a|b'], null, new Set());
+    expect(edges.every((edge) => edge.type === 'familyRoute' && edge.data === undefined)).toBe(true);
   });
 
   it('keeps a partnership separate when it has no matching recorded children', () => {
