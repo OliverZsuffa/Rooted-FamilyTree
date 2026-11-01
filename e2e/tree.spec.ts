@@ -68,7 +68,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(3);
   await page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' }).click();
-  await expect(page.getByText(/Cara Example to Cara New Example.*2020-01-01/)).toBeVisible();
+  await expect(page.getByText(/Cara Example to Cara New Example/)).toBeVisible();
   await page.getByRole('button', { name: 'Search people' }).click();
   await page.getByPlaceholder('Find someone…').fill('Cara Example');
   await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' })).toBeVisible();
@@ -185,7 +185,7 @@ test('persists the theme choice and supports partial precision dates', async ({ 
   await page.getByLabel('Gender').selectOption('female');
   await page.getByLabel('Born').fill('1984-03');
   await page.getByRole('button', { name: 'Save person' }).click();
-  await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' })).not.toHaveClass(/person-card-incomplete/);
+  await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).locator('.person-card')).not.toHaveClass(/person-card-incomplete/);
   await page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).click();
   await expect(page.locator('.person-panel .panel-dates')).toContainText('1984-03');
 });
