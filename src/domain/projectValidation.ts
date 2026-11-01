@@ -26,6 +26,9 @@ export function validateProjectForImport(input: unknown): ProjectValidation {
   }
 
   const people = new Set(personIds);
+  if (project.people.some((person) => person.displayAttribute && !Object.prototype.hasOwnProperty.call(person.attributes, person.displayAttribute))) {
+    return { success: false, error: 'A person card refers to a missing custom detail.' };
+  }
   if (project.partnerships.some((item) => !people.has(item.person1Id)
     || !people.has(item.person2Id) || item.person1Id === item.person2Id)) {
     return { success: false, error: 'A partnership refers to a missing or identical person.' };
