@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeProps,
   Handle, Position,
@@ -171,7 +171,7 @@ function App() {
     setSelectedId(null);
   };
 
-  const onNodeDragStop = useCallback((_event: MouseEvent, node: Node) => {
+  const onNodeDragStop = useCallback((_event: globalThis.MouseEvent | TouchEvent, node: Node) => {
     setProject((current) => {
       if (!current) return current;
       const result = calculateGenerations(current);
