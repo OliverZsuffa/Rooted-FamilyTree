@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
-import { calculateAutoPositions } from './domain/layout';
+import { calculateAutoPositions, createFallbackPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
@@ -62,22 +62,6 @@ function syncGenerationRows(project: Project): Project {
   return { ...project, layout: { manualPositions } };
 }
 
-function arrange(project: Project): Record<string, { x: number; y: number }> {
-  const result = calculateGenerations(project);
-  if (!result.ok) return project.layout.manualPositions;
-  const bands = new Map<number, string[]>();
-  for (const person of project.people) {
-    const generation = result.generations.get(person.id) ?? 0;
-    bands.set(generation, [...(bands.get(generation) ?? []), person.id]);
-  }
-  const positions: Record<string, { x: number; y: number }> = {};
-  for (const [generation, ids] of bands) {
-    ids.forEach((id, index) => {
-      positions[id] = { x: index * 240, y: generation * 190 };
-    });
-  }
-  return positions;
-}
 
 function App() {
   const [project, setProject] = useState<Project | null>(null);
@@ -217,7 +201,7 @@ function App() {
   useEffect(() => {
     if (!project) return;
     let active = true;
-    const fallback = arrange(project);
+    const fallback = createFallbackPositions(project);
     setAutoLayout({ key: layoutKey, positions: fallback });
     if (!project.people.length) return () => { active = false; };
     calculateAutoPositions(project).then((positions) => {
@@ -226,7 +210,7 @@ function App() {
       if (active) setAutoLayout({ key: layoutKey, positions: fallback });
     });
     return () => { active = false; };
-  }, [project, layoutKey]);
+  }, [layoutKey]);
 
   useEffect(() => {
     if (!project || !reactFlowInstance.current) return;
@@ -289,7 +273,7 @@ function App() {
 
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
-    const automatic = autoLayout.key === layoutKey ? autoLayout.positions : arrange(project);
+    const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
     const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()));
     const visibleIds = new Set(visiblePeople.map((person) => person.id));
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
