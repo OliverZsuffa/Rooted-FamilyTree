@@ -186,7 +186,7 @@ function App() {
       const initial = createEmptyProject();
       projectRef.current = initial;
       setProject(initial);
-      setStorageReady(true);
+      setStorageReady(false);
       setSaveState('error');
     });
     return () => { active = false; };
