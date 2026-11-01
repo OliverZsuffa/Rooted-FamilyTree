@@ -294,4 +294,23 @@ describe('recursive family layout', () => {
     }
   });
 
+  it('handles pedigree collapse without duplicating a shared ancestor or descendant', () => {
+    const project = makeProject(['ancestorA', 'ancestorB', 'parentA', 'parentB', 'child']);
+    project.parentage = [
+      { id: 'a-pa', type: 'biological_parent', parentId: 'ancestorA', childId: 'parentA' },
+      { id: 'b-pa', type: 'biological_parent', parentId: 'ancestorB', childId: 'parentA' },
+      { id: 'a-pb', type: 'biological_parent', parentId: 'ancestorA', childId: 'parentB' },
+      { id: 'b-pb', type: 'biological_parent', parentId: 'ancestorB', childId: 'parentB' },
+      { id: 'pa-child', type: 'biological_parent', parentId: 'parentA', childId: 'child' },
+      { id: 'pb-child', type: 'biological_parent', parentId: 'parentB', childId: 'child' },
+    ];
+
+    const positions = createFallbackPositions(project);
+    for (const person of project.people) expect(positions[person.id]).toBeDefined();
+    expect(new Set(project.people.map((person) => person.id)).size).toBe(project.people.length);
+    expect(Math.abs(positions.parentA.x - positions.parentB.x)).toBe(224);
+    expect(positions.child.y).toBe(positions.parentA.y + 190);
+    expect(Object.keys(positions).filter((id) => id === 'ancestorA')).toHaveLength(1);
+  });
+
 });
