@@ -487,10 +487,10 @@ function App() {
           <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
           <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
-          <button className="icon-button" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
-          <button className="icon-button" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
+          <button className="icon-button desktop-only" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
+          <button className="icon-button desktop-only" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
           <input ref={importInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importProject(event.target.files?.[0])} />
-          <button className="icon-button" aria-label="Automatic layout" title="Reset automatic layout" onClick={() => commitProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={16} /></button>
+          <button className="icon-button desktop-only" aria-label="Automatic layout" title="Reset automatic layout" onClick={() => commitProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={16} /></button>
           <button className="primary-button" onClick={() => openPerson()}><Plus size={16} /> Add person</button>
         </div>
       </header>
@@ -563,7 +563,7 @@ function App() {
         </section>
       )}
       {needRefresh && <div className="update-banner"><span>A new version is ready.</span><button className="primary-button" onClick={() => void updateServiceWorker(true)}>Update</button></div>}
-      <footer className="footer"><span>Rooted</span><span>Kept on this device</span></footer>
+      <footer className="footer"><span>Rooted</span><span>Kept on this device</span><div className="mobile-backup-controls"><button className="icon-button" aria-label="Export backup" onClick={exportProject}><Download size={15} /></button><button className="icon-button" aria-label="Import backup" onClick={() => importInput.current?.click()}><Upload size={15} /></button><button className="icon-button" aria-label="Automatic layout" onClick={() => commitProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={15} /></button></div></footer>
 
       {dialog && (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
