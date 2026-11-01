@@ -126,9 +126,7 @@ function calculateRecursivePositions(
       }
       nextBlockX += blockWidth + CARD_GAP;
     }
-    // Keep ancestry components connected by partnership records in the same
-    // neighbourhood, without interleaving their internal family ordering.
-    nextBlockX += CARD_GAP;
+    // Components inside a partnership group already have the standard block gap.
   }
 
   calculateFamilyJunctionPositions(project, positions);
