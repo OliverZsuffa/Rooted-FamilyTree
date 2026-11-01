@@ -45,4 +45,4 @@ Tracked in [GitHub issue #9](https://github.com/OliverZsuffa/Rooted-FamilyTree/i
 
 ## Implementation status
 
-Plan prepared. Awaiting explicit approval before implementation.
+Approved and implemented on branch `request/009-first-name-only`. Submitted as PR #9. Automated verification is running. The change is not merged.
