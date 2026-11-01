@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, Download, GitFork, LayoutGrid, Moon, Plus, Redo2, Search, Sprout, Sun, Trash2, Undo2, Upload, X } from 'lucide-react';
-import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
+import { createEmptyProject, partialDateSchema, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
 import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
@@ -30,9 +30,11 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
+  const incomplete = !!data.person.manualIncomplete || !data.person.firstName?.trim() || !data.person.lastName?.trim() || !data.person.gender || !data.person.birthDate;
+  const genderLabel = data.person.gender === 'female' ? 'Female' : data.person.gender === 'male' ? 'Male' : data.person.gender === 'nonbinary' ? 'Nonbinary' : null;
   return (
     <div
-      className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
+      className={['person-card', data.selected && 'person-card-selected', data.dimmed && 'person-card-dimmed', incomplete && 'person-card-incomplete'].filter(Boolean).join(' ')}
     >
       <Handle type="target" position={Position.Top} />
       <Handle type="target" position={Position.Left} id="partnership-in-left" />
@@ -40,6 +42,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       <Handle type="target" position={Position.Right} id="partnership-in-right" />
       <Handle type="source" position={Position.Right} id="partnership-out-right" />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
+      {genderLabel && <span className="person-card-gender" title={genderLabel} aria-label={genderLabel}>{data.person.gender === 'female' ? 'F' : data.person.gender === 'male' ? 'M' : 'NB'}</span>}
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
       <Handle type="source" position={Position.Bottom} />
@@ -100,7 +103,10 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<'person' | 'relationship' | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
-  const [personName, setPersonName] = useState('');
+  const [personFirstName, setPersonFirstName] = useState('');
+  const [personMiddleName, setPersonMiddleName] = useState('');
+  const [personLastName, setPersonLastName] = useState('');
+  const [manualPersonIncomplete, setManualPersonIncomplete] = useState(false);
   const [personGender, setPersonGender] = useState<Gender>(null);
   const [birthDate, setBirthDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
@@ -405,7 +411,10 @@ function App() {
 
   const openPerson = (person?: Person) => {
     setEditingPerson(person ?? null);
-    setPersonName(person?.name ?? '');
+    setPersonFirstName(person?.firstName ?? '');
+    setPersonMiddleName(person?.middleName ?? '');
+    setPersonLastName(person?.lastName ?? '');
+    setManualPersonIncomplete(!!person?.manualIncomplete);
     setPersonGender(person?.gender ?? null);
     setBirthDate(person?.birthDate ?? '');
     setDeathDate(person?.deathDate ?? '');
@@ -417,7 +426,11 @@ function App() {
 
   const savePerson = (event: FormEvent) => {
     event.preventDefault();
-    if (!project || !personName.trim()) return;
+    if (!project) return;
+    const first = personFirstName.trim(), middle = personMiddleName.trim(), last = personLastName.trim();
+    if ((!editingPerson && (!first || !last)) || ((first || last) && (!first || !last))) { setAttributeError('Enter both a first name and a last name.'); return; }
+    if (birthDate && !partialDateSchema.safeParse(birthDate).success) { setAttributeError('Enter the birth date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
+    if (deathDate && !partialDateSchema.safeParse(deathDate).success) { setAttributeError('Enter the death date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     if (birthDate && deathDate && deathDate < birthDate) { setAttributeError('Death date cannot be before birth date.'); return; }
     const attributes: Record<string, string | number | boolean | null> = {};
     for (const row of attributeRows) {
@@ -434,11 +447,11 @@ function App() {
     const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, name: personName.trim(), gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
+        ? { ...person, ...(first && last ? { firstName: first, middleName: middle, lastName: last, name: [first, middle, last].filter(Boolean).join(' ') } : {}), manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
-      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), gender: personGender, nameHistory: [], birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
+      const person: Person = { id: crypto.randomUUID(), name: [first, middle, last].filter(Boolean).join(' '), firstName: first, middleName: middle, lastName: last, manualIncomplete: manualPersonIncomplete, gender: personGender, nameHistory: [], birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
       commitProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
@@ -742,7 +755,11 @@ function App() {
               <form onSubmit={savePerson}>
                 <p className="eyebrow">{editingPerson ? 'PERSON DETAILS' : 'A NEW BRANCH'}</p>
                 <h2 id="dialog-title">{editingPerson ? 'Edit person' : 'Add a person'}</h2>
-                <label>Name<input autoFocus required value={personName} onChange={(event) => setPersonName(event.target.value)} placeholder="Full name" /></label>
+                {editingPerson && !editingPerson.firstName && !editingPerson.lastName && <p className="legacy-name-note">Existing full name: {editingPerson.name}. Add first and last names only if you can identify them confidently.</p>}
+                <label>First name<input autoFocus={!editingPerson} required={!editingPerson} value={personFirstName} onChange={(event) => setPersonFirstName(event.target.value)} placeholder="First name" /></label>
+                <label>Middle name<input value={personMiddleName} onChange={(event) => setPersonMiddleName(event.target.value)} placeholder="Optional" /></label>
+                <label>Last name<input required={!editingPerson} value={personLastName} onChange={(event) => setPersonLastName(event.target.value)} placeholder="Last name" /></label>
+                <label className="incomplete-control"><input type="checkbox" checked={manualPersonIncomplete} onChange={(event) => setManualPersonIncomplete(event.target.checked)} /> Mark this person as incomplete</label>
                 <label>Gender
                   <select value={personGender ?? ''} onChange={(event) => setPersonGender((event.target.value || null) as Gender)}>
                     <option value="">Not specified</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Nonbinary</option>
