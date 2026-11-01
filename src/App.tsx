@@ -416,6 +416,7 @@ function App() {
               <h2>{selectedPerson.name || 'Unnamed person'}</h2>
               <p className="panel-dates">{selectedPerson.birthDate || 'Birth date unknown'}{selectedPerson.deathDate ? ` · ${selectedPerson.deathDate}` : ''}</p>
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
+              {Object.entries(selectedPerson.attributes).length > 0 && <div className="person-details">{Object.entries(selectedPerson.attributes).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value === null ? 'Not set' : String(value)}</strong></div>)}</div>}
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
                 <button className="secondary-button" onClick={() => { setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
@@ -440,6 +441,26 @@ function App() {
                 <div className="date-fields">
                   <label>Born<input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
                   <label>Died<input type="date" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
+                </div>
+                <div className="attribute-editor">
+                  <span className="attribute-heading">Additional details</span>
+                  {attributeRows.map((row, index) => <div className="attribute-row" key={index}>
+                    <input aria-label="Detail name" placeholder="Name" value={row.key} onChange={(event) => updateAttributeRow(index, "key", event.target.value)} />
+                    <select aria-label="Detail type" value={row.type} onChange={(event) => updateAttributeRow(index, "type", event.target.value as AttributeRow["type"])}>
+                      <option value="text">Text</option><option value="number">Number</option><option value="date">Date</option><option value="boolean">Yes or no</option>
+                    </select>
+                    {row.type === "boolean" ? <select aria-label="Detail value" value={row.value} onChange={(event) => updateAttributeRow(index, "value", event.target.value)}><option value="true">Yes</option><option value="false">No</option></select>
+                      : <input aria-label="Detail value" type={row.type === "text" ? "text" : row.type} placeholder="Value" value={row.value} onChange={(event) => updateAttributeRow(index, "value", event.target.value)} /> }
+                    <button className="attribute-remove" type="button" aria-label="Remove detail" onClick={() => setAttributeRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}><X size={14} /></button>
+                  </div>)}
+                  <button className="text-button" type="button" onClick={() => setAttributeRows((rows) => [...rows, { key: "", value: "", type: "text" }])}><Plus size={14} /> Add detail</button>
+                  <label>Show on person card
+                    <select value={displayAttribute} onChange={(event) => setDisplayAttribute(event.target.value)}>
+                      <option value="">Nothing</option>
+                      {attributeRows.filter((row) => row.key.trim()).map((row, index) => <option key={index} value={row.key}>{row.key}</option>)}
+                    </select>
+                  </label>
+                  {attributeError && <p className="form-error">{attributeError}</p>}
                 </div>
                 <button className="primary-button modal-submit" type="submit"><Check size={16} /> Save person</button>
               </form>
