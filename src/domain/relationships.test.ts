@@ -44,7 +44,7 @@ describe('family generations', () => {
     const project = fixture();
     project.parentage = [
       { id: '1', type: 'biological_parent', parentId: 'a', childId: 'b' },
-      { id: '2', type: 'biological_parent', parentId: 'a', childId: 'c' },
+      { id: '2', type: 'biological_parent', parentId: 'b', childId: 'c' },
       { id: '3', type: 'biological_parent', parentId: 'b', childId: 'd' },
       { id: '4', type: 'adoptive_parent', parentId: 'c', childId: 'd' },
     ];
