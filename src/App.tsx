@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeProps,
-  Handle, Position, useReactFlow,
+  Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, ChevronDown, Heart, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
@@ -127,7 +127,7 @@ function App() {
     setDialog('person');
   };
 
-  const savePerson = (event: React.FormEvent) => {
+  const savePerson = (event: FormEvent) => {
     event.preventDefault();
     if (!project || !personName.trim()) return;
     if (editingPerson) {
@@ -172,10 +172,15 @@ function App() {
   };
 
   const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
-    setProject((current) => current ? {
-      ...current,
-      layout: { manualPositions: { ...current.layout.manualPositions, [node.id]: node.position } },
-    } : current);
+    setProject((current) => {
+      if (!current) return current;
+      const result = calculateGenerations(current);
+      const generation = result.ok ? result.generations.get(node.id) ?? 0 : 0;
+      return {
+        ...current,
+        layout: { manualPositions: { ...current.layout.manualPositions, [node.id]: { x: node.position.x, y: generation * 190 } } },
+      };
+    });
   }, []);
 
   const addPartnership = () => {
