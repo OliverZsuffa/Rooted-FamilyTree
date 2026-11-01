@@ -343,13 +343,14 @@ function App() {
       } else if (row.type === 'boolean') attributes[key] = row.value === 'true';
       else attributes[key] = row.value;
     }
+    const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null }
+        ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
-      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null };
+      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
       commitProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
