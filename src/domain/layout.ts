@@ -1,8 +1,6 @@
-import ELK from 'elkjs/lib/elk.bundled.js';
 import type { Project } from './schema';
 import { calculateGenerations } from './relationships';
 
-const elk = new ELK();
 
 export async function calculateAutoPositions(
   project: Pick<Project, 'people' | 'parentage'>,
@@ -10,6 +8,8 @@ export async function calculateAutoPositions(
   const generationResult = calculateGenerations(project);
   if (!generationResult.ok || project.people.length === 0) return {};
 
+  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
+  const elk = new ELK();
   const graph = await elk.layout({
     id: 'rooted-tree',
     layoutOptions: {
