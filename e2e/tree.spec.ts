@@ -64,11 +64,24 @@ test('mobile canvas fits the screen and supports dragging a person card', async 
   const session = await context.newCDPSession(page);
   const x = bounds.x + bounds.width / 2;
   const y = bounds.y + bounds.height / 2;
+  const nodeHandle = await node.elementHandle();
+  if (!nodeHandle) throw new Error('Person node element could not be captured');
   await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
-  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 70, y: y + 30, id: 1 }] });
+  for (const offset of [15, 30, 45, 60, 70]) {
+    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + offset, y: y + Math.round(offset * 0.35), id: 1 }] });
+    await expect.poll(() => nodeHandle.evaluate((element) => element.isConnected)).toBe(true);
+    await expect(node).toBeVisible();
+  }
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect.poll(() => node.evaluate((element) => (element as HTMLElement).style.transform)).not.toBe(before);
   const moved = await node.evaluate((element) => (element as HTMLElement).style.transform);
+
+  // A complete drag must be represented by exactly one undoable change.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => node.evaluate((element) => (element as HTMLElement).style.transform)).toBe(before);
+  await page.getByRole('button', { name: 'Redo' }).click();
+  await expect.poll(() => node.evaluate((element) => (element as HTMLElement).style.transform)).toBe(moved);
+
   await page.waitForTimeout(450);
   await page.reload();
   const reloadedNode = page.locator('.react-flow__node').filter({ hasText: 'Mobile Person' });
