@@ -2,12 +2,14 @@ import type { Project } from './schema';
 import { calculateGenerations } from './relationships';
 
 
-let elkPromise: Promise<InstanceType<(typeof import('elkjs/lib/elk.bundled.js'))['default']>> | null = null;
+function createElk() {
+  return import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
+}
+
+let elkPromise: ReturnType<typeof createElk> | null = null;
 
 async function getElk() {
-  if (!elkPromise) {
-    elkPromise = import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
-  }
+  elkPromise ??= createElk();
   return elkPromise;
 }
 
