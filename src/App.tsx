@@ -12,11 +12,11 @@ import { loadProject, saveProject } from './data/database';
 import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-type PersonNodeData = { person: Person; selected: boolean };
+type PersonNodeData = { person: Person; selected: boolean; dimmed: boolean };
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ symbol: string }, 'junction'>;
+type JunctionFlowNode = Node<{ symbol: string; dimmed: boolean }, 'junction'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
@@ -222,6 +222,34 @@ function App() {
 
   const selectedPerson = project?.people.find((person) => person.id === selectedId) ?? null;
   const generations = useMemo(() => project ? calculateGenerations(project) : null, [project]);
+  const highlightedIds = useMemo(() => {
+    const highlighted = new Set<string>();
+    if (!project || !selectedId) return highlighted;
+    const ancestors = [selectedId];
+    while (ancestors.length) {
+      const current = ancestors.pop()!;
+      if (highlighted.has(current)) continue;
+      highlighted.add(current);
+      for (const relation of project.parentage) {
+        if (relation.childId === current && !highlighted.has(relation.parentId)) ancestors.push(relation.parentId);
+      }
+    }
+    const descendants = [selectedId];
+    while (descendants.length) {
+      const current = descendants.pop()!;
+      if (highlighted.has(current) && current !== selectedId) continue;
+      highlighted.add(current);
+      for (const relation of project.parentage) {
+        if (relation.parentId === current && !highlighted.has(relation.childId)) descendants.push(relation.childId);
+      }
+    }
+    for (const partnership of project.partnerships) {
+      if (highlighted.has(partnership.person1Id)) highlighted.add(partnership.person2Id);
+      if (highlighted.has(partnership.person2Id)) highlighted.add(partnership.person1Id);
+    }
+    return highlighted;
+  }, [project, selectedId]);
+
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = Object.keys(autoPositions).length ? autoPositions : arrange(project);
@@ -230,7 +258,7 @@ function App() {
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
       id: person.id, type: 'person',
       position: project.layout.manualPositions[person.id] ?? automatic[person.id] ?? { x: 0, y: 0 },
-      data: { person, selected: person.id === selectedId },
+      data: { person, selected: person.id === selectedId, dimmed: !!selectedId && !highlightedIds.has(person.id) },
     }));
     const junctionNodes: JunctionFlowNode[] = [];
     for (const partnership of project.partnerships) {
@@ -242,12 +270,12 @@ function App() {
       junctionNodes.push({
         id: 'junction:' + partnership.id, type: 'junction',
         position: { x: (first.x + second.x) / 2 + 76, y: (first.y + second.y) / 2 + 95 },
-        data: { symbol: partnership.type === 'marriage' ? '♥' : '♡' },
+        data: { symbol: partnership.type === 'marriage' ? '♥' : '♡', dimmed: !!selectedId && !highlightedIds.has(partnership.person1Id) && !highlightedIds.has(partnership.person2Id) },
         draggable: false, selectable: false,
       });
     }
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoPositions]);
+  }, [project, selectedId, search, autoPositions, highlightedIds]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
     const visibleIds = new Set(nodes.map((node) => node.id));
@@ -292,8 +320,11 @@ function App() {
         style: { stroke: relation.type === 'biological_parent' ? '#8b765e' : '#a99a83', strokeWidth: 1.5, strokeDasharray: relation.type === 'guardian' || relation.type === 'step_parent' ? '5 4' : undefined },
       });
     }
-    return result.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
-  }, [project, nodes]);
+    return result.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)).map((edge) => ({
+      ...edge,
+      style: { ...edge.style, opacity: !selectedId || (highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15 },
+    }));
+  }, [project, nodes, selectedId, highlightedIds]);
 
   const exportProject = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
