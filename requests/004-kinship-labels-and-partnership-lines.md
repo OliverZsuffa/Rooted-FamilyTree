@@ -61,13 +61,13 @@ Name history should be stored as dated records associated with the relevant marr
 - No change to the existing generation rules.
 - Preserve local storage and JSON backup compatibility.
 
-## Open UX detail
+## Resolved UX
 
-The proposed location for calculated kinship labels is the selected person's details panel, as a compact list of other people and their relationship to the selected person. Name history should appear in the relevant person's details, with the marriage association and effective date. Confirm whether this is the intended presentation before implementation.
+Calculated kinship appears as a compact Family connections list in the selected person's details panel. Previous names appear in a separate Previous names list with the effective date and marriage association. Gender is edited in the person editor. Marriage name changes are an optional secondary section in the marriage editor.
 
 ## Delivery workflow
 
-Create and review an implementation plan, then wait for explicit user approval. Implement on a focused branch, add domain and browser tests, update knowledge documentation, and open a pull request. Do not merge or deploy without explicit approval.
+The implementation plan was approved. Implement on `request/004-kinship-labels-and-partnership-lines`, add domain and browser tests, update knowledge documentation, and open a pull request. Merge after required checks pass, using the user's explicit merge approval.
 
 
 ### Family-group layout
