@@ -357,6 +357,7 @@ function App() {
             dimmed: relationshipFinderOpen
               ? !relationshipHighlightIds.has(group.id) && !group.parentIds.some((id) => relationshipHighlightIds.has(id)) && !group.childIds.some((id) => relationshipHighlightIds.has(id))
               : !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)),
+            incomplete: project.parentage.some((relation) => relation.manualIncomplete && group.parentIds.includes(relation.parentId) && group.childIds.includes(relation.childId)) || project.partnerships.some((partnership) => partnership.manualIncomplete && group.parentIds.length === 2 && [partnership.person1Id, partnership.person2Id].sort().join('|') === group.parentIds.join('|')),
             symbol: group.parentIds.length === 2 ? (() => {
               const partnership = project.partnerships.find((item) => [item.person1Id, item.person2Id].sort().join('|') === group.parentIds.join('|'));
               return partnership ? (partnership.type === 'marriage' ? '♥' : '♡') : null;
