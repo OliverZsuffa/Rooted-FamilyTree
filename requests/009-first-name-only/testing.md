@@ -7,4 +7,13 @@
 
 ## Verification
 
-Results will be recorded after the branch CI workflow completes.
+GitHub Actions run [#338](https://github.com/OliverZsuffa/Rooted-FamilyTree/actions/runs/41338473088) completed successfully on the final implementation and request documentation commit.
+
+- TypeScript type check: passed.
+- Unit tests: 62 passed across 10 test files.
+- Playwright: 12 passed, 2 skipped by the existing desktop/mobile project-specific test conditions. The new first-name-only regression passed on both desktop Chromium and mobile Chromium.
+- Production build: passed.
+- PWA build verification: passed.
+- Dependency security check: passed at the configured high severity threshold. npm reported 10 existing low or moderate dependency advisories. No dependency changes were made for this request.
+
+The production build emitted the existing chunk-size warning for a JavaScript bundle larger than 500 kB. The build itself succeeded.
