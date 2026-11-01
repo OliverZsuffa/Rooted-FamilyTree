@@ -29,6 +29,7 @@ Rooted must reliably display every person in the active tree, draw all applicabl
 - Ensure relationships remain visible after editing, searching, importing, deleting, and changing layout.
 - Review React Flow controlled state handling, node dimensions, edge handles, and viewport behaviour.
 - Rework mobile layout where required, including canvas sizing, toolbar fit, touch gestures, person details, dialogs, and on-screen keyboard behaviour.
+- Fix touch interaction so users can drag individual people and pan and zoom the tree on mobile.
 - Preserve existing IndexedDB data and JSON backup compatibility.
 
 ## Non-goals
@@ -49,6 +50,7 @@ Rooted must reliably display every person in the active tree, draw all applicabl
 - [ ] Existing local data is not silently discarded or overwritten.
 - [ ] Core workflows work at narrow mobile widths, including 320 px, 360 px, and 390 px.
 - [ ] Touch pan, node movement, and pinch zoom work without accidental page scrolling or unusable overlays.
+- [ ] Dragging a person card on a phone changes its saved position and remains undoable.
 - [ ] Dialogs remain usable when the mobile keyboard is open.
 - [ ] Automated tests cover the actual interface and relationship rendering, not only the domain model.
 - [ ] Desktop and mobile browser tests pass before merge.
