@@ -9,7 +9,7 @@ import { createEmptyProject, type ParentageType, type Person, type Project } fro
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { calculateAutoPositions } from './domain/layout';
 import { loadProject, saveProject } from './data/database';
-import { projectSchema } from './domain/schema';
+import { validateProjectForImport } from './domain/projectValidation';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 type PersonNodeData = { person: Person; selected: boolean };
@@ -299,23 +299,13 @@ function App() {
   const importProject = async (file?: File) => {
     if (!file) return;
     try {
-      const parsed = projectSchema.safeParse(JSON.parse(await file.text()));
+      const parsed = validateProjectForImport(JSON.parse(await file.text()));
       if (!parsed.success) {
-        window.alert('This file is not a valid Rooted backup. Your current tree has not been changed.');
-        return;
-      }
-      const generations = calculateGenerations(parsed.data);
-      const personIds = parsed.data.people.map((person) => person.id);
-      const relationshipIds = [...parsed.data.parentage, ...parsed.data.partnerships].map((item) => item.id);
-      const partnershipPeopleExist = parsed.data.partnerships.every((item) =>
-        personIds.includes(item.person1Id) && personIds.includes(item.person2Id) && item.person1Id !== item.person2Id);
-      if (!generations.ok || new Set(personIds).size !== personIds.length
-        || new Set(relationshipIds).size !== relationshipIds.length || !partnershipPeopleExist) {
-        window.alert('This backup contains conflicting relationships. Your current tree has not been changed.');
+        window.alert(parsed.error + ' Your current tree has not been changed.');
         return;
       }
       if (window.confirm('Replace your current family tree with this backup?')) {
-        commitProject(syncGenerationRows(parsed.data));
+        commitProject(syncGenerationRows(parsed.project));
         setSelectedId(null);
         setSearch('');
       }
