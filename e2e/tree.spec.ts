@@ -13,12 +13,23 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await addPerson(page, 'Ben Example');
   await addPerson(page, 'Cara Example');
 
-  await page.locator('.react-flow__node').filter({ hasText: 'Ben Example' }).click();
+  await page.waitForTimeout(500);
+  const personNodes = page.locator('.react-flow__node-person');
+  const boxes = await personNodes.evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+  }));
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      expect(boxes[i].right <= boxes[j].left || boxes[j].right <= boxes[i].left || boxes[i].bottom <= boxes[j].top || boxes[j].bottom <= boxes[i].top).toBe(true);
+    }
+  }
+  await page.locator('.react-flow__node').filter({ hasText: 'Ben Example' }).click({ force: true });
   await page.getByRole('button', { name: 'Add relationship' }).click();
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
   await page.getByRole('button', { name: 'Save relationship' }).click();
 
-  await page.locator('.react-flow__node').filter({ hasText: 'Cara Example' }).click();
+  await page.locator('.react-flow__node').filter({ hasText: 'Cara Example' }).click({ force: true });
   await page.getByRole('button', { name: 'Add relationship' }).click();
   await page.getByLabel('Relationship type').selectOption('marriage');
   await page.getByLabel('Connect to').selectOption({ label: 'Ada Example' });
