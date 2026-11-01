@@ -124,3 +124,5 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 }
 
 .modal { max-height: calc(100dvh - 36px); overflow-y: auto; }
+
+.search-empty { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 10px 14px; border: 1px solid #ddd5c7; border-radius: 7px; color: #8a7967; background: rgba(250,248,241,.94); font-size: 11px; pointer-events: none; }
