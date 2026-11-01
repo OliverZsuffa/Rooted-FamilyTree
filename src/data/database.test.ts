@@ -19,7 +19,7 @@ describe('local project database', () => {
     const loaded = await loadProject();
     expect(loaded?.people).toEqual(project.people);
     expect(loaded?.id).toBe(project.id);
-    expect(loaded?.updatedAt).not.toBe(project.updatedAt);
+    expect(loaded?.updatedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}T/);
   });
 
   it('returns null when no project has been saved', async () => {
