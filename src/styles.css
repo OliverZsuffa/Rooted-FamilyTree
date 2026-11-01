@@ -102,3 +102,5 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 .attribute-row select[aria-label="Detail type"] { grid-column: 2; grid-row: 1; }
 .attribute-row input[aria-label="Detail value"], .attribute-row select[aria-label="Detail value"] { grid-column: 1; grid-row: 2; }
 .attribute-remove { grid-column: 2; grid-row: 2; justify-self: end; width: 35px; border: 0; border-radius: 6px; color: #a65342; background: #f5e9e4; }
+
+.icon-button:disabled { opacity: .3; cursor: default; }
