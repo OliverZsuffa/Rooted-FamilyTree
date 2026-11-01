@@ -63,6 +63,121 @@ function createSiblingClusters(
   return { clusters, clusterByPerson };
 }
 
+
+type LayoutEdge = { parentId: string; childId: string };
+const MAX_LAYOUT_SWEEPS = 8;
+const MAX_LAYOUT_EVALUATIONS = 1200;
+
+function layoutScore(rows: Map<number, string[]>, edges: LayoutEdge[], generationByPerson: Map<string, number>) {
+  let crossings = 0;
+  let span = 0;
+  const ranks = new Map<number, Map<string, number>>();
+  for (const [generation, ids] of rows) {
+    ranks.set(generation, new Map(ids.map((id, index) => [id, index])));
+  }
+  const byLayer = new Map<number, LayoutEdge[]>();
+  for (const edge of edges) {
+    const generation = generationByPerson.get(edge.parentId);
+    if (generation === undefined || generationByPerson.get(edge.childId) !== generation + 1) continue;
+    byLayer.set(generation, [...(byLayer.get(generation) ?? []), edge]);
+  }
+  for (const [generation, layerEdges] of byLayer) {
+    const source = ranks.get(generation)!;
+    const target = ranks.get(generation + 1)!;
+    const ordered = layerEdges.map(edge => ({
+      a: source.get(edge.parentId)!,
+      b: target.get(edge.childId)!,
+    })).sort((x, y) => x.a - y.a || x.b - y.b);
+    for (let i = 0; i < ordered.length; i += 1) {
+      span += Math.abs(ordered[i].a - ordered[i].b);
+      for (let j = i + 1; j < ordered.length; j += 1) {
+        if (ordered[i].a !== ordered[j].a && ordered[i].b > ordered[j].b) crossings += 1;
+      }
+    }
+  }
+  return { crossings, span };
+}
+
+function optimiseRows(
+  input: Map<number, string[]>,
+  parentsByChild: Map<string, string[]>,
+  componentIds: string[],
+): Map<number, string[]> {
+  const rows = new Map([...input].map(([generation, ids]) => [generation, [...ids]]));
+  const generations = [...rows.keys()].sort((a, b) => a - b);
+  const generationByPerson = new Map<string, number>();
+  for (const [generation, ids] of rows) for (const id of ids) generationByPerson.set(id, generation);
+  const edges: LayoutEdge[] = [];
+  for (const childId of componentIds) {
+    for (const parentId of parentsByChild.get(childId) ?? []) edges.push({ parentId, childId });
+  }
+
+  // Exact parent sets are indivisible blocks. Empty parent sets stay singleton.
+  const blocksByGeneration = new Map<number, string[][]>();
+  for (const generation of generations) {
+    const blocks = new Map<string, string[]>();
+    for (const id of rows.get(generation) ?? []) {
+      const key = JSON.stringify(parentsByChild.get(id) ?? []);
+      blocks.set(key, [...(blocks.get(key) ?? []), id]);
+    }
+    const seen = new Set<string>();
+    const ordered: string[][] = [];
+    for (const id of rows.get(generation) ?? []) {
+      const key = JSON.stringify(parentsByChild.get(id) ?? []);
+      if (!seen.has(key)) {
+        seen.add(key);
+        ordered.push(blocks.get(key)!);
+      }
+    }
+    blocksByGeneration.set(generation, ordered);
+  }
+
+  let best = layoutScore(rows, edges, generationByPerson);
+  let evaluations = 0;
+  for (let sweep = 0; sweep < MAX_LAYOUT_SWEEPS && evaluations < MAX_LAYOUT_EVALUATIONS; sweep += 1) {
+    const direction = sweep % 2 === 0 ? generations : [...generations].reverse();
+    let improved = false;
+    for (const generation of direction) {
+      if (evaluations >= MAX_LAYOUT_EVALUATIONS) break;
+      const blocks = blocksByGeneration.get(generation) ?? [];
+      if (blocks.length < 2) continue;
+      const neighbours = [...(rows.get(generation - 1) ?? []), ...(rows.get(generation + 1) ?? [])];
+      if (!neighbours.length) continue;
+      const rank = new Map(neighbours.map((id, index) => [id, index]));
+      const originalIndex = new Map(blocks.map((block, index) => [block[0], index]));
+      const related = (block: string[]) => {
+        const ids: string[] = [];
+        for (const id of block) {
+          for (const parentId of parentsByChild.get(id) ?? []) if (rank.has(parentId)) ids.push(parentId);
+          for (const edge of edges) if (edge.parentId === id && rank.has(edge.childId)) ids.push(edge.childId);
+        }
+        return ids;
+      };
+      const candidateBlocks = [...blocks].sort((a, b) => {
+        const average = (block: string[]) => {
+          const values = related(block).map(id => rank.get(id)!);
+          return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length
+            : (originalIndex.get(block[0]) ?? 0) * (neighbours.length + 1);
+        };
+        return average(a) - average(b) || originalIndex.get(a[0])! - originalIndex.get(b[0])!;
+      });
+      if (candidateBlocks.every((block, index) => block === blocks[index])) continue;
+      const candidate = new Map(rows);
+      candidate.set(generation, candidateBlocks.flat());
+      const score = layoutScore(candidate, edges, generationByPerson);
+      evaluations += 1;
+      if (score.crossings < best.crossings || (score.crossings === best.crossings && score.span < best.span)) {
+        rows.set(generation, candidateBlocks.flat());
+        blocksByGeneration.set(generation, candidateBlocks);
+        best = score;
+        improved = true;
+      }
+    }
+    if (!improved) break;
+  }
+  return rows;
+}
+
 /**
  * Builds one deterministic ordering per ancestry component.
  *
@@ -258,9 +373,11 @@ export function buildFamilyTraversal(
       orderedRows.set(generation, orderedIds);
     }
 
+    const optimisedRows = optimiseRows(orderedRows, parentsByChild, componentIds);
+
     return {
       key: componentIds[0],
-      personIdsByGeneration: orderedRows,
+      personIdsByGeneration: optimisedRows,
     };
   }).sort((first, second) => compareIds(first.key, second.key));
 }
