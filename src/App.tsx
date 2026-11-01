@@ -359,7 +359,9 @@ function App() {
   };
 
   const updateAttributeRow = (index: number, field: keyof AttributeRow, value: string) => {
-    setAttributeRows((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row));
+    setAttributeRows((rows) => rows.map((row, rowIndex) => rowIndex === index
+      ? { ...row, [field]: value, ...(field === 'type' && value === 'boolean' && !row.value ? { value: 'true' } : {}) }
+      : row));
   };
 
   const saveRelationship = (event: FormEvent) => {
