@@ -89,3 +89,16 @@ h1 { margin: 0; color: var(--brown); font-family: Georgia, "Times New Roman", se
 
 .partnership-junction { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(120,128,90,.45); border-radius: 50%; color: #78805a; background: #f7f4eb; box-shadow: 0 2px 6px rgba(72,55,35,.08); font-size: 12px; }
 .partnership-junction .react-flow__handle { opacity: 0; }
+
+.person-card-detail { margin-top: 7px; overflow: hidden; color: #78805a; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.person-details { display: grid; gap: 8px; margin-top: 17px; padding-top: 14px; border-top: 1px solid #e7dfd2; }
+.person-details div { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.person-details span { color: #8a7967; }
+.person-details strong { color: var(--brown); font-weight: 550; text-align: right; overflow-wrap: anywhere; }
+.attribute-editor { display: flex; flex-direction: column; gap: 9px; }
+.attribute-heading { color: #716354; font-size: 11px; }
+.attribute-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 6px; }
+.attribute-row input:first-child { grid-column: 1; grid-row: 1; }
+.attribute-row select[aria-label="Detail type"] { grid-column: 2; grid-row: 1; }
+.attribute-row input[aria-label="Detail value"], .attribute-row select[aria-label="Detail value"] { grid-column: 1; grid-row: 2; }
+.attribute-remove { grid-column: 2; grid-row: 2; justify-self: end; width: 35px; border: 0; border-radius: 6px; color: #a65342; background: #f5e9e4; }
