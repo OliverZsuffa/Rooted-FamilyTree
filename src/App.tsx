@@ -112,6 +112,11 @@ function App() {
   const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [relationshipFinderOpen, setRelationshipFinderOpen] = useState(false);
+  const [relationshipFirstId, setRelationshipFirstId] = useState('');
+  const [relationshipSecondId, setRelationshipSecondId] = useState('');
+  const [relationshipFirstQuery, setRelationshipFirstQuery] = useState('');
+  const [relationshipSecondQuery, setRelationshipSecondQuery] = useState('');
   const importInput = useRef<HTMLInputElement>(null);
   const [needRefresh, setNeedRefresh] = useState(false);
   const { updateServiceWorker } = useRegisterSW({ immediate: true, onNeedRefresh: () => setNeedRefresh(true) });
@@ -290,6 +295,20 @@ function App() {
     return highlighted;
   }, [project, selectedId]);
 
+  const relationshipPath = useMemo(() => project && relationshipFirstId && relationshipSecondId
+    ? findRelationshipPath(project, relationshipFirstId, relationshipSecondId) : null,
+  [project, relationshipFirstId, relationshipSecondId]);
+  const relationshipHighlightIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (relationshipFinderOpen) {
+      if (relationshipPath) {
+        relationshipPath.personIds.forEach((id) => ids.add(id));
+        relationshipPath.familyGroupIds.forEach((id) => ids.add(id));
+      } else if (relationshipFirstId) ids.add(relationshipFirstId);
+    }
+    return ids;
+  }, [relationshipFinderOpen, relationshipPath, relationshipFirstId]);
+
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
     const automatic = autoLayout.key === layoutKey ? autoLayout.positions : createFallbackPositions(project);
@@ -301,7 +320,7 @@ function App() {
       data: {
         person,
         selected: person.id === selectedId,
-        dimmed: !!selectedId && !highlightedIds.has(person.id),
+        dimmed: relationshipFinderOpen ? !relationshipHighlightIds.has(person.id) : !!selectedId && !highlightedIds.has(person.id),
       },
     }));
     const positionsByPerson = new Map(personNodes.map((node) => [node.id, node.position]));
@@ -319,21 +338,31 @@ function App() {
           id: group.id,
           type: 'family',
           position,
-          data: { dimmed: !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)) },
+          data: {
+            dimmed: relationshipFinderOpen
+              ? !relationshipHighlightIds.has(group.id) && !group.parentIds.some((id) => relationshipHighlightIds.has(id)) && !group.childIds.some((id) => relationshipHighlightIds.has(id))
+              : !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)),
+            symbol: group.parentIds.length === 2 ? (() => {
+              const partnership = project.partnerships.find((item) => [item.person1Id, item.person2Id].sort().join('|') === group.parentIds.join('|'));
+              return partnership ? (partnership.type === 'marriage' ? '♥' : '♡') : null;
+            })() : null,
+          },
           draggable: false,
           selectable: false,
         };
       });
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds, relationshipFinderOpen, relationshipHighlightIds]);
   useEffect(() => {
     setFlowNodes(nodes);
   }, [nodes]);
 
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
-    return buildRelationshipEdges(project, nodes.map((node) => node.id), selectedId, highlightedIds, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
-  }, [project, nodes, selectedId, highlightedIds]);
+    const activeId = relationshipFinderOpen ? relationshipFirstId || null : selectedId;
+    const activeHighlights = relationshipFinderOpen ? relationshipHighlightIds : highlightedIds;
+    return buildRelationshipEdges(project, nodes.map((node) => node.id), activeId, activeHighlights, Object.fromEntries(nodes.map((node) => [node.id, node.position])));
+  }, [project, nodes, selectedId, highlightedIds, relationshipFinderOpen, relationshipFirstId, relationshipHighlightIds]);
 
   const exportProject = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
