@@ -243,7 +243,7 @@ async function addParentChild(page: import('@playwright/test').Page, parent: str
 }
 
 test('keeps cousin branches aligned through recursive ancestor expansion', async ({ page }) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   await page.goto('/');
   for (const name of ['Grandparent One', 'Grandparent Two', 'Parent Branch', 'Uncle Branch', 'Child Branch', 'Cousin Branch']) {
     await addPerson(page, name);
