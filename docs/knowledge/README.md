@@ -7,6 +7,7 @@ Store concise, reusable facts that help with multiple Rooted requests.
 - [Architecture and data model](architecture-and-data-model.md) — source of truth, people, relationships, generations, and layout boundaries.
 - [PWA and offline behaviour](pwa-offline.md) — installability, service-worker caching, GitHub Pages base paths, and offline guarantees.
 - [Local storage and portability](local-storage-and-portability.md) — IndexedDB, autosave, JSON import/export, and recovery.
+- [Graph rendering and interaction](graph-rendering-and-interaction.md) — React Flow sizing, collision-safe positions, relationship edges, viewport fitting, and touch dragging.
 
 ## What belongs here?
 
