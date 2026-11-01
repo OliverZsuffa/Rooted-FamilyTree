@@ -119,7 +119,6 @@ function App() {
   const [nameChangeChoice, setNameChangeChoice] = useState<'none' | 'first' | 'second' | 'both'>('none');
   const [firstNewName, setFirstNewName] = useState('');
   const [secondNewName, setSecondNewName] = useState('');
-  const [nameChangeDate, setNameChangeDate] = useState('');
   const [relationPersonId, setRelationPersonId] = useState('');
   const [newRelativeName, setNewRelativeName] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
@@ -448,7 +447,7 @@ function App() {
     const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, ...(first && last ? { firstName: first, middleName: middle, lastName: last, name: [first, middle, last].filter(Boolean).join(' ') } : {}), manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
+        ? { ...person, ...(first && last ? { firstName: first, middleName: middle, lastName: last, name: person.nameHistory.length ? person.name : [first, middle, last].filter(Boolean).join(' ') } : {}), manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
@@ -470,6 +469,8 @@ function App() {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationPersonId === '__new__' && !newRelativeName.trim()) { setRelationError('Enter the new person’s name.'); return; }
+    if (partnershipStartDate && !partialDateSchema.safeParse(partnershipStartDate).success) { setRelationError('Enter the start date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
+    if (partnershipEndDate && !partialDateSchema.safeParse(partnershipEndDate).success) { setRelationError('Enter the end date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     const newRelative = relationPersonId === '__new__'
       ? { id: crypto.randomUUID(), name: newRelativeName.trim(), gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }
       : null;
@@ -548,6 +549,7 @@ function App() {
     setRelationPersonId(relation.parentId === selectedPerson.id ? relation.childId : relation.parentId);
     setRelationDirection(relation.parentId === selectedPerson.id ? 'child' : 'parent');
     setRelationError('');
+    setManualRelationshipIncomplete(!!relation.manualIncomplete);
     setDialog('relationship');
   };
 
@@ -565,7 +567,6 @@ function App() {
     setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
     setFirstNewName(firstChange ? selectedPerson.name : '');
     setSecondNewName(secondChange ? (project.people.find((person) => person.id === otherId)?.name ?? '') : '');
-    setNameChangeDate('');
     setRelationError('');
     setDialog('relationship');
   };
@@ -740,7 +741,7 @@ function App() {
               </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setNameChangeDate(''); setManualRelationshipIncomplete(false); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setManualRelationshipIncomplete(false); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -820,7 +821,6 @@ function App() {
                         </label>
                         {(nameChangeChoice === 'first' || nameChangeChoice === 'both') && <label>New full name for {selectedPerson?.name}<input value={firstNewName} onChange={(event) => setFirstNewName(event.target.value)} placeholder="Enter full name" /></label>}
                         {(nameChangeChoice === 'second' || nameChangeChoice === 'both') && <label>New full name for {project.people.find((person) => person.id === relationPersonId)?.name ?? 'the other person'}<input value={secondNewName} onChange={(event) => setSecondNewName(event.target.value)} placeholder="Enter full name" /></label>}
-                        {nameChangeChoice !== 'none' && <label>Effective date<input type="date" value={nameChangeDate} onChange={(event) => setNameChangeDate(event.target.value)} /></label>}
                       </div>
                     )}
                   </>
