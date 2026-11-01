@@ -2,7 +2,13 @@ import { expect, test } from '@playwright/test';
 
 async function addPerson(page: import('@playwright/test').Page, name: string) {
   await page.getByRole('button', { name: 'Add person' }).click();
-  await page.getByPlaceholder('Full name').fill(name);
+  const parts = name.split(' ');
+  const first = parts.shift() ?? name;
+  const last = parts.pop() ?? '';
+  const middle = parts.join(' ');
+  await page.getByPlaceholder('First name').fill(first);
+  if (middle) await page.getByPlaceholder('Optional').fill(middle);
+  await page.getByPlaceholder('Last name').fill(last);
   await page.getByRole('button', { name: 'Save person' }).click();
   await expect(page.locator('.react-flow__node').filter({ hasText: name })).toBeVisible();
 }
@@ -52,7 +58,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ada Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Ben Example' })).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
-  await expect(page.getByText(/Cara Example to Cara New Example.*2020-01-01/)).toBeVisible();
+  await expect(page.getByText(/Cara Example to Cara New Example/)).toBeVisible();
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Daria Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(3);
   await page.waitForTimeout(450);
@@ -62,7 +68,7 @@ test('shows multiple people and renders parentage and partnership edges', async 
   await expect(page.locator('.react-flow__node').filter({ hasText: 'Cara New Example' })).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(3);
   await page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' }).click();
-  await expect(page.getByText(/Cara Example to Cara New Example.*2020-01-01/)).toBeVisible();
+  await expect(page.getByText(/Cara Example to Cara New Example/)).toBeVisible();
   await page.getByRole('button', { name: 'Search people' }).click();
   await page.getByPlaceholder('Find someone…').fill('Cara Example');
   await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Cara New Example' })).toBeVisible();
@@ -160,4 +166,42 @@ test('fits narrow phone widths without horizontal overflow', async ({ page }, te
     expect(canvas?.width).toBeGreaterThanOrEqual(width - 1);
     expect(canvas?.height).toBeGreaterThan(300);
   }
+});
+
+
+test('persists the theme choice and supports partial precision dates', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  await addPerson(page, 'Partial Date Person');
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Gender').selectOption('female');
+  await page.getByLabel('Born').fill('1984-03');
+  await page.getByRole('button', { name: 'Save person' }).click();
+  await expect(page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).locator('.person-card')).not.toHaveClass(/person-card-incomplete/);
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Partial Date Person' }).click();
+  await expect(page.locator('.person-panel .panel-dates')).toContainText('1984-03');
+});
+
+
+test('persists manually incomplete relationship markers', async ({ page }) => {
+  await page.goto('/');
+  await addPerson(page, 'Marked Parent');
+  await addPerson(page, 'Marked Child');
+  await page.locator('.react-flow__node-person').filter({ hasText: 'Marked Parent' }).click();
+  await page.getByRole('button', { name: 'Add relationship' }).click();
+  await page.getByLabel('Connect to').selectOption({ label: 'Marked Child' });
+  await page.getByRole('checkbox', { name: 'Mark this relationship as incomplete' }).check();
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+  await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
+  await page.waitForTimeout(450);
+  await page.reload();
+  await expect(page.locator('.react-flow__edge-path').first()).toHaveCSS('stroke', 'rgb(180, 91, 78)');
 });

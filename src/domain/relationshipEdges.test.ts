@@ -52,6 +52,17 @@ describe('relationship edge construction', () => {
     expect(edges.some((edge) => edge.id === 'family:a|c:child:e')).toBe(true);
   });
 
+  it('marks manually incomplete family and partnership edges with the warning colour token', () => {
+    const project = fixture();
+    project.parentage = [{ id: 'parent-child', type: 'biological_parent', parentId: 'a', childId: 'c', manualIncomplete: true }];
+    const familyEdges = buildRelationshipEdges(project, ['a', 'c', 'family:a'], null, new Set());
+    expect(familyEdges.every((edge) => edge.style?.stroke === 'var(--edge-incomplete)')).toBe(true);
+    project.parentage = [];
+    project.partnerships = [{ id: 'ab', type: 'marriage', person1Id: 'a', person2Id: 'b', startDate: null, endDate: null, nameChanges: [], manualIncomplete: true }];
+    const partnershipEdges = buildRelationshipEdges(project, ['a', 'b'], null, new Set());
+    expect(partnershipEdges[0].style?.stroke).toBe('var(--edge-incomplete)');
+  });
+
   it('does not emit connectors with hidden endpoints', () => {
     const project = fixture();
     project.parentage = [{ id: 'parent-child', type: 'biological_parent', parentId: 'a', childId: 'b' }];

@@ -50,6 +50,34 @@ function stepParentIds(project: Project, childId: string): Set<string> {
   return ids;
 }
 
+function greatPrefix(generationsBeyondImmediate: number): string {
+  return generationsBeyondImmediate > 0 ? 'great-'.repeat(generationsBeyondImmediate) : '';
+}
+
+function ordinal(value: number): string {
+  const words = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+  if (words[value]) return words[value];
+  const mod100 = value % 100;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? 'th' : value % 10 === 1 ? 'st' : value % 10 === 2 ? 'nd' : value % 10 === 3 ? 'rd' : 'th';
+  return value + suffix;
+}
+
+function cousinLabel(subjectAncestors: Map<string, number>, relativeAncestors: Map<string, number>): string | null {
+  const candidates = [...subjectAncestors.entries()].flatMap(([id, subjectDepth]) => {
+    const relativeDepth = relativeAncestors.get(id);
+    return relativeDepth !== undefined && subjectDepth >= 2 && relativeDepth >= 2
+      ? [{ total: subjectDepth + relativeDepth, degree: Math.min(subjectDepth, relativeDepth) - 1, removed: Math.abs(subjectDepth - relativeDepth) }]
+      : [];
+  });
+  if (!candidates.length) return null;
+  const shortest = Math.min(...candidates.map((item) => item.total));
+  const best = candidates.filter((item) => item.total === shortest);
+  const descriptions = new Set(best.map((item) => item.degree + ':' + item.removed));
+  if (descriptions.size !== 1) return null;
+  const { degree, removed } = best[0];
+  return ordinal(degree) + ' cousin' + (removed ? ' ' + (removed === 1 ? 'once' : removed === 2 ? 'twice' : removed + ' times') + ' removed' : '');
+}
+
 export function getKinshipLabel(project: Project, subjectId: string, relativeId: string): string | null {
   if (subjectId === relativeId) return null;
   const people = new Map(project.people.map((person) => [person.id, person]));
@@ -62,14 +90,26 @@ export function getKinshipLabel(project: Project, subjectId: string, relativeId:
   const relativeAsAncestor = subjectAncestors.get(relativeId);
   const subjectAsAncestor = relativeAncestors.get(subjectId);
   if (relativeAsAncestor !== undefined) {
-    if (relativeAsAncestor === 1) return gendered(relative, 'mother', 'father', 'parent');
+    if (relativeAsAncestor === 1) {
+      const directLinks = project.parentage.filter((relation) => relation.parentId === relativeId && relation.childId === subjectId);
+      if (directLinks.some((relation) => relation.type === 'adoptive_parent') && !directLinks.some((relation) => relation.type === 'biological_parent')) {
+        return gendered(relative, 'adoptive mother', 'adoptive father', 'adoptive parent');
+      }
+      return gendered(relative, 'mother', 'father', 'parent');
+    }
     if (relativeAsAncestor === 2) return gendered(relative, 'grandmother', 'grandfather', 'grandparent');
-    return gendered(relative, 'great-grandmother', 'great-grandfather', 'great-grandparent');
+    return gendered(relative, 'great-'.repeat(relativeAsAncestor - 2) + 'grandmother', 'great-'.repeat(relativeAsAncestor - 2) + 'grandfather', 'great-'.repeat(relativeAsAncestor - 2) + 'grandparent');
   }
   if (subjectAsAncestor !== undefined) {
-    if (subjectAsAncestor === 1) return gendered(relative, 'daughter', 'son', 'child');
+    if (subjectAsAncestor === 1) {
+      const directLinks = project.parentage.filter((relation) => relation.parentId === subjectId && relation.childId === relativeId);
+      if (directLinks.some((relation) => relation.type === 'adoptive_parent') && !directLinks.some((relation) => relation.type === 'biological_parent')) {
+        return gendered(relative, 'adopted daughter', 'adopted son', 'adopted child');
+      }
+      return gendered(relative, 'daughter', 'son', 'child');
+    }
     if (subjectAsAncestor === 2) return gendered(relative, 'granddaughter', 'grandson', 'grandchild');
-    return gendered(relative, 'great-granddaughter', 'great-grandson', 'great-grandchild');
+    return gendered(relative, 'great-'.repeat(subjectAsAncestor - 2) + 'granddaughter', 'great-'.repeat(subjectAsAncestor - 2) + 'grandson', 'great-'.repeat(subjectAsAncestor - 2) + 'grandchild');
   }
 
   const sibling = siblings(project, subjectId, relativeId);
@@ -80,21 +120,19 @@ export function getKinshipLabel(project: Project, subjectId: string, relativeId:
     return gendered(relative, 'sister', 'brother', 'sibling');
   }
 
-  const subjectParents = parentsOf(project, subjectId);
-  const relativeParents = parentsOf(project, relativeId);
-  const auntUncle = subjectParents.some((parentId) => siblings(project, parentId, relativeId).shared > 0);
-  if (auntUncle) return gendered(relative, 'aunt', 'uncle', 'parent’s sibling');
-  const nieceNephew = relativeParents.some((parentId) => siblings(project, parentId, subjectId).shared > 0);
-  if (nieceNephew) return gendered(relative, 'niece', 'nephew', 'sibling’s child');
-
-  let cousinDepth: number | null = null;
-  for (const [ancestorId, subjectDepth] of subjectAncestors) {
-    const relativeDepth = relativeAncestors.get(ancestorId);
-    if (relativeDepth === undefined || subjectDepth < 2 || relativeDepth < 2) continue;
-    const total = subjectDepth + relativeDepth;
-    if (cousinDepth === null || total < cousinDepth) cousinDepth = total;
+  for (const [ancestorId, depth] of subjectAncestors) {
+    if (depth < 1 || siblings(project, ancestorId, relativeId).shared === 0) continue;
+    const prefix = greatPrefix(depth - 1);
+    return gendered(relative, prefix + 'aunt', prefix + 'uncle', prefix + 'parent’s sibling');
   }
-  if (cousinDepth !== null) return 'cousin';
+  for (const [ancestorId, depth] of relativeAncestors) {
+    if (depth < 1 || siblings(project, ancestorId, subjectId).shared === 0) continue;
+    const prefix = greatPrefix(depth - 1);
+    return gendered(relative, prefix + 'niece', prefix + 'nephew', prefix + 'sibling’s child');
+  }
+
+  const cousin = cousinLabel(subjectAncestors, relativeAncestors);
+  if (cousin) return cousin;
 
   if (stepParentIds(project, subjectId).has(relativeId)) return gendered(relative, 'stepmother', 'stepfather', 'stepparent');
   if (stepParentIds(project, relativeId).has(subjectId)) return gendered(relative, 'stepdaughter', 'stepson', 'stepchild');

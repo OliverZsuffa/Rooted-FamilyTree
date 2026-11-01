@@ -4,8 +4,8 @@ import {
   Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, GitFork, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
-import { createEmptyProject, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
+import { Check, Download, GitFork, LayoutGrid, Moon, Plus, Redo2, Search, Sprout, Sun, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { createEmptyProject, isDefinitelyBefore, partialDateSchema, type Gender, type ParentageType, type Person, type Project } from './domain/schema';
 import { findRelationshipPath } from './domain/relationshipPath';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { buildRelationshipEdges } from './domain/relationshipEdges';
@@ -23,16 +23,18 @@ type PersonNodeData = {
 type AttributeRow = { key: string; value: string; type: 'text' | 'number' | 'date' | 'boolean' };
 type EditingRelationship = { id: string; kind: 'parentage' | 'partnership' } | null;
 type PersonFlowNode = Node<PersonNodeData, 'person'>;
-type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null }, 'family'>;
+type JunctionFlowNode = Node<{ dimmed: boolean; symbol: string | null; incomplete: boolean }, 'family'>;
 type FlowNode = PersonFlowNode | JunctionFlowNode;
 
 function PersonCard({ data }: NodeProps<PersonFlowNode>) {
   const date = data.person.birthDate ? new Date(data.person.birthDate).getFullYear() : null;
   const death = data.person.deathDate ? new Date(data.person.deathDate).getFullYear() : null;
   const detail = data.person.displayAttribute ? data.person.attributes[data.person.displayAttribute] : null;
+  const incomplete = !!data.person.manualIncomplete || !data.person.firstName?.trim() || !data.person.lastName?.trim() || !data.person.gender || !data.person.birthDate;
+  const genderLabel = data.person.gender === 'female' ? 'Female' : data.person.gender === 'male' ? 'Male' : data.person.gender === 'nonbinary' ? 'Nonbinary' : null;
   return (
     <div
-      className={data.dimmed ? (data.selected ? 'person-card person-card-selected person-card-dimmed' : 'person-card person-card-dimmed') : (data.selected ? 'person-card person-card-selected' : 'person-card')}
+      className={['person-card', data.selected && 'person-card-selected', data.dimmed && 'person-card-dimmed', incomplete && 'person-card-incomplete'].filter(Boolean).join(' ')}
     >
       <Handle type="target" position={Position.Top} />
       <Handle type="target" position={Position.Left} id="partnership-in-left" />
@@ -40,6 +42,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
       <Handle type="target" position={Position.Right} id="partnership-in-right" />
       <Handle type="source" position={Position.Right} id="partnership-out-right" />
       <div className="person-card-name">{data.person.name || 'Unnamed person'}</div>
+      {genderLabel && <span className="person-card-gender" title={genderLabel} aria-label={genderLabel}>{data.person.gender === 'female' ? 'F' : data.person.gender === 'male' ? 'M' : 'NB'}</span>}
       {(date || death) && <div className="person-card-dates">{date ?? '?'}{death ? ` · ${death}` : ''}</div>}
       {detail !== null && detail !== undefined && <div className="person-card-detail">{String(detail)}</div>}
       <Handle type="source" position={Position.Bottom} />
@@ -48,7 +51,7 @@ function PersonCard({ data }: NodeProps<PersonFlowNode>) {
 }
 function JunctionCard({ data }: NodeProps<JunctionFlowNode>) {
   return (
-    <div className={data.dimmed ? 'family-junction family-junction-dimmed' : 'family-junction'} aria-label="Recorded family connection">
+    <div className={['family-junction', data.dimmed && 'family-junction-dimmed', data.incomplete && 'family-junction-incomplete'].filter(Boolean).join(' ')} aria-label={data.incomplete ? 'Incomplete recorded family connection' : 'Recorded family connection'}>
       <Handle type="target" position={Position.Top} />
       {data.symbol && <span className="family-junction-symbol" aria-label={data.symbol === '♥' ? 'Marriage' : 'Partnership'}>{data.symbol}</span>}
       <Handle type="source" position={Position.Bottom} />
@@ -77,6 +80,15 @@ function syncGenerationRows(project: Project): Project {
 
 
 function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try { return window.localStorage.getItem('rooted-theme') === 'dark' ? 'dark' : 'light'; }
+    catch { return 'light'; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { window.localStorage.setItem('rooted-theme', theme); } catch { /* Theme still applies for this session. */ }
+  }, [theme]);
+
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStart = useRef<{ project: Project; id: string; position: { x: number; y: number } } | null>(null);
@@ -91,7 +103,10 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<'person' | 'relationship' | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
-  const [personName, setPersonName] = useState('');
+  const [personFirstName, setPersonFirstName] = useState('');
+  const [personMiddleName, setPersonMiddleName] = useState('');
+  const [personLastName, setPersonLastName] = useState('');
+  const [manualPersonIncomplete, setManualPersonIncomplete] = useState(false);
   const [personGender, setPersonGender] = useState<Gender>(null);
   const [birthDate, setBirthDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
@@ -104,11 +119,11 @@ function App() {
   const [nameChangeChoice, setNameChangeChoice] = useState<'none' | 'first' | 'second' | 'both'>('none');
   const [firstNewName, setFirstNewName] = useState('');
   const [secondNewName, setSecondNewName] = useState('');
-  const [nameChangeDate, setNameChangeDate] = useState('');
   const [relationPersonId, setRelationPersonId] = useState('');
   const [newRelativeName, setNewRelativeName] = useState('');
   const [relationDirection, setRelationDirection] = useState<'parent' | 'child'>('child');
   const [relationError, setRelationError] = useState('');
+  const [manualRelationshipIncomplete, setManualRelationshipIncomplete] = useState(false);
   const [editingRelation, setEditingRelation] = useState<EditingRelationship>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -329,9 +344,8 @@ function App() {
       .map((group) => {
         const parents = group.parentIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
         const children = group.childIds.map((id) => positionsByPerson.get(id)).filter((point): point is { x: number; y: number } => !!point);
-        const points = [...parents, ...children];
         const position = parents.length && children.length ? {
-          x: points.reduce((sum, point) => sum + point.x + 88, 0) / points.length - 9,
+          x: (parents.reduce((sum, point) => sum + point.x + 88, 0) / parents.length + children.reduce((sum, point) => sum + point.x + 88, 0) / children.length) / 2 - 12,
           y: (Math.max(...parents.map((point) => point.y)) + Math.min(...children.map((point) => point.y))) / 2 + 35,
         } : automatic[group.id] ?? { x: 0, y: 0 };
         return {
@@ -342,6 +356,7 @@ function App() {
             dimmed: relationshipFinderOpen
               ? !relationshipHighlightIds.has(group.id) && !group.parentIds.some((id) => relationshipHighlightIds.has(id)) && !group.childIds.some((id) => relationshipHighlightIds.has(id))
               : !!selectedId && !group.parentIds.some((id) => highlightedIds.has(id)) && !group.childIds.some((id) => highlightedIds.has(id)),
+            incomplete: project.parentage.some((relation) => relation.manualIncomplete && group.parentIds.includes(relation.parentId) && group.childIds.includes(relation.childId)) || project.partnerships.some((partnership) => partnership.manualIncomplete && group.parentIds.length === 2 && [partnership.person1Id, partnership.person2Id].sort().join('|') === group.parentIds.join('|')),
             symbol: group.parentIds.length === 2 ? (() => {
               const partnership = project.partnerships.find((item) => [item.person1Id, item.person2Id].sort().join('|') === group.parentIds.join('|'));
               return partnership ? (partnership.type === 'marriage' ? '♥' : '♡') : null;
@@ -396,7 +411,10 @@ function App() {
 
   const openPerson = (person?: Person) => {
     setEditingPerson(person ?? null);
-    setPersonName(person?.name ?? '');
+    setPersonFirstName(person?.firstName ?? '');
+    setPersonMiddleName(person?.middleName ?? '');
+    setPersonLastName(person?.lastName ?? '');
+    setManualPersonIncomplete(!!person?.manualIncomplete);
     setPersonGender(person?.gender ?? null);
     setBirthDate(person?.birthDate ?? '');
     setDeathDate(person?.deathDate ?? '');
@@ -408,8 +426,12 @@ function App() {
 
   const savePerson = (event: FormEvent) => {
     event.preventDefault();
-    if (!project || !personName.trim()) return;
-    if (birthDate && deathDate && deathDate < birthDate) { setAttributeError('Death date cannot be before birth date.'); return; }
+    if (!project) return;
+    const first = personFirstName.trim(), middle = personMiddleName.trim(), last = personLastName.trim();
+    if ((!editingPerson && (!first || !last)) || ((first || last) && (!first || !last))) { setAttributeError('Enter both a first name and a last name.'); return; }
+    if (birthDate && !partialDateSchema.safeParse(birthDate).success) { setAttributeError('Enter the birth date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
+    if (deathDate && !partialDateSchema.safeParse(deathDate).success) { setAttributeError('Enter the death date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
+    if (birthDate && deathDate && isDefinitelyBefore(deathDate, birthDate)) { setAttributeError('Death date cannot be before birth date.'); return; }
     const attributes: Record<string, string | number | boolean | null> = {};
     for (const row of attributeRows) {
       const key = row.key.trim();
@@ -425,11 +447,11 @@ function App() {
     const selectedDisplayAttribute = displayAttribute && Object.prototype.hasOwnProperty.call(attributes, displayAttribute) ? displayAttribute : null;
     if (editingPerson) {
       commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
-        ? { ...person, name: personName.trim(), gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
+        ? { ...person, ...(first && last ? { firstName: first, middleName: middle, lastName: last, name: person.nameHistory.length ? person.name : [first, middle, last].filter(Boolean).join(' ') } : {}), manualIncomplete: manualPersonIncomplete, gender: personGender, birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
-      const person: Person = { id: crypto.randomUUID(), name: personName.trim(), gender: personGender, nameHistory: [], birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
+      const person: Person = { id: crypto.randomUUID(), name: [first, middle, last].filter(Boolean).join(' '), firstName: first, middleName: middle, lastName: last, manualIncomplete: manualPersonIncomplete, gender: personGender, nameHistory: [], birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: selectedDisplayAttribute };
       commitProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
@@ -447,13 +469,15 @@ function App() {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationPersonId === '__new__' && !newRelativeName.trim()) { setRelationError('Enter the new person’s name.'); return; }
+    if (partnershipStartDate && !partialDateSchema.safeParse(partnershipStartDate).success) { setRelationError('Enter the start date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
+    if (partnershipEndDate && !partialDateSchema.safeParse(partnershipEndDate).success) { setRelationError('Enter the end date as YYYY, YYYY-MM, or YYYY-MM-DD.'); return; }
     const newRelative = relationPersonId === '__new__'
       ? { id: crypto.randomUUID(), name: newRelativeName.trim(), gender: null, nameHistory: [], birthDate: null, deathDate: null, attributes: {}, displayAttribute: null }
       : null;
     const otherPersonId = newRelative?.id ?? relationPersonId;
     const baseProject = newRelative ? { ...project, people: [...project.people, newRelative] } : project;
     if (relationType === 'marriage' || relationType === 'partnership') {
-      if (partnershipStartDate && partnershipEndDate && partnershipEndDate < partnershipStartDate) {
+      if (partnershipStartDate && partnershipEndDate && isDefinitelyBefore(partnershipEndDate, partnershipStartDate)) {
         setRelationError('The end date cannot be before the start date.');
         return;
       }
@@ -470,10 +494,9 @@ function App() {
           const person = baseProject.people.find((item) => item.id === change.personId);
           if (!person || !change.newName) { setRelationError('Enter the new full name for each person changing their name.'); return; }
           if (person.name !== change.newName) {
-            const effectiveDate = nameChangeDate || partnershipStartDate || null;
-            newNameChanges.push({ personId: person.id, previousName: person.name, newName: change.newName, effectiveDate });
+            newNameChanges.push({ personId: person.id, previousName: person.name, newName: change.newName });
             nameHistoryByPerson.set(person.id, [...(nameHistoryByPerson.get(person.id) ?? []), {
-              id: crypto.randomUUID(), previousName: person.name, newName: change.newName, effectiveDate, partnershipId,
+              id: crypto.randomUUID(), previousName: person.name, newName: change.newName, partnershipId,
             }]);
           }
         }
@@ -489,6 +512,7 @@ function App() {
         type: relationType, person1Id: selectedPerson.id, person2Id: otherPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
         nameChanges: newNameChanges,
+        manualIncomplete: manualRelationshipIncomplete,
       };
       const partnerships = existingPartnership
         ? baseProject.partnerships.map((item) => item.id === partnershipId ? partnership : item)
@@ -502,6 +526,7 @@ function App() {
     const relation = {
       id: editingRelation?.kind === 'parentage' ? editingRelation.id : crypto.randomUUID(),
       type: relationType,
+      manualIncomplete: manualRelationshipIncomplete,
       parentId: relationDirection === 'child' ? selectedPerson.id : otherPersonId,
       childId: relationDirection === 'child' ? otherPersonId : selectedPerson.id,
     };
@@ -524,6 +549,7 @@ function App() {
     setRelationPersonId(relation.parentId === selectedPerson.id ? relation.childId : relation.parentId);
     setRelationDirection(relation.parentId === selectedPerson.id ? 'child' : 'parent');
     setRelationError('');
+    setManualRelationshipIncomplete(!!relation.manualIncomplete);
     setDialog('relationship');
   };
 
@@ -534,13 +560,13 @@ function App() {
     setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
     setPartnershipStartDate(relation.startDate ?? '');
     setPartnershipEndDate(relation.endDate ?? '');
+    setManualRelationshipIncomplete(!!relation.manualIncomplete);
     const otherId = relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id;
     const firstChange = relation.nameChanges.find((item) => item.personId === selectedPerson.id);
     const secondChange = relation.nameChanges.find((item) => item.personId === otherId);
     setNameChangeChoice(firstChange && secondChange ? 'both' : firstChange ? 'first' : secondChange ? 'second' : 'none');
     setFirstNewName(firstChange ? selectedPerson.name : '');
     setSecondNewName(secondChange ? (project.people.find((person) => person.id === otherId)?.name ?? '') : '');
-    setNameChangeDate(firstChange?.effectiveDate ?? secondChange?.effectiveDate ?? '');
     setRelationError('');
     setDialog('relationship');
   };
@@ -612,6 +638,7 @@ function App() {
         <a className="brand" href="./" aria-label="Rooted home"><span className="brand-mark"><Sprout size={19} strokeWidth={1.8} /></span><span>rooted</span></a>
         <div className="toolbar">
           <span className="save-state"><span className={`save-dot save-dot-${saveState}`} />{saveState === 'loading' ? 'Opening' : saveState === 'saving' ? 'Saving' : saveState === 'error' ? 'Save issue' : 'Saved'}</span>
+          <button className="icon-button" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'} onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
           <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
           <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
@@ -675,7 +702,7 @@ function App() {
             elementsSelectable
             proOptions={{ hideAttribution: true }}
           >
-            <Background color="#d8cfbf" gap={24} size={1} />
+            <Background color={theme === 'dark' ? '#514b40' : '#d8cfbf'} gap={24} size={1} />
             <Controls showInteractive={false} />
           </ReactFlow>
           {selectedPerson && (
@@ -692,7 +719,7 @@ function App() {
                     const marriage = project.partnerships.find((item) => item.id === entry.partnershipId);
                     const otherId = marriage ? (marriage.person1Id === selectedPerson.id ? marriage.person2Id : marriage.person1Id) : null;
                     const otherName = otherId ? project.people.find((person) => person.id === otherId)?.name : null;
-                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{entry.effectiveDate ? ' · ' + entry.effectiveDate : ''}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
+                    return <div className="relationship-row" key={entry.id}><span>{entry.previousName} to {entry.newName}{otherName ? ' · married to ' + otherName : ' · marriage record unavailable'}</span></div>;
                   })}
                 </div>
               )}
@@ -714,7 +741,7 @@ function App() {
               </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setNameChangeDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setNewRelativeName(''); setRelationDirection('child'); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setNameChangeChoice('none'); setFirstNewName(''); setSecondNewName(''); setManualRelationshipIncomplete(false); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -732,15 +759,19 @@ function App() {
               <form onSubmit={savePerson}>
                 <p className="eyebrow">{editingPerson ? 'PERSON DETAILS' : 'A NEW BRANCH'}</p>
                 <h2 id="dialog-title">{editingPerson ? 'Edit person' : 'Add a person'}</h2>
-                <label>Name<input autoFocus required value={personName} onChange={(event) => setPersonName(event.target.value)} placeholder="Full name" /></label>
+                {editingPerson && !editingPerson.firstName && !editingPerson.lastName && <p className="legacy-name-note">Existing full name: {editingPerson.name}. Add first and last names only if you can identify them confidently.</p>}
+                <label>First name<input autoFocus={!editingPerson} required={!editingPerson} value={personFirstName} onChange={(event) => setPersonFirstName(event.target.value)} placeholder="First name" /></label>
+                <label>Middle name<input value={personMiddleName} onChange={(event) => setPersonMiddleName(event.target.value)} placeholder="Optional" /></label>
+                <label>Last name<input required={!editingPerson} value={personLastName} onChange={(event) => setPersonLastName(event.target.value)} placeholder="Last name" /></label>
+                <label className="incomplete-control"><input type="checkbox" checked={manualPersonIncomplete} onChange={(event) => setManualPersonIncomplete(event.target.checked)} /> Mark this person as incomplete</label>
                 <label>Gender
                   <select value={personGender ?? ''} onChange={(event) => setPersonGender((event.target.value || null) as Gender)}>
                     <option value="">Not specified</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Nonbinary</option>
                   </select>
                 </label>
                 <div className="date-fields">
-                  <label>Born<input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
-                  <label>Died<input type="date" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
+                  <label>Born<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} /></label>
+                  <label>Died<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={deathDate} onChange={(event) => setDeathDate(event.target.value)} /></label>
                 </div>
                 <div className="attribute-editor">
                   <span className="attribute-heading">Additional details</span>
@@ -777,8 +808,8 @@ function App() {
                 {relationType === 'marriage' || relationType === 'partnership' ? (
                   <>
                     <div className="date-fields">
-                      <label>Started<input type="date" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
-                      <label>Ended<input type="date" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
+                      <label>Started<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={partnershipStartDate} onChange={(event) => setPartnershipStartDate(event.target.value)} /></label>
+                      <label>Ended<input type="text" inputMode="numeric" placeholder="YYYY or YYYY-MM-DD" value={partnershipEndDate} onChange={(event) => setPartnershipEndDate(event.target.value)} /></label>
                     </div>
                     {relationType === 'marriage' && (
                       <div className="name-change-editor">
@@ -790,7 +821,6 @@ function App() {
                         </label>
                         {(nameChangeChoice === 'first' || nameChangeChoice === 'both') && <label>New full name for {selectedPerson?.name}<input value={firstNewName} onChange={(event) => setFirstNewName(event.target.value)} placeholder="Enter full name" /></label>}
                         {(nameChangeChoice === 'second' || nameChangeChoice === 'both') && <label>New full name for {project.people.find((person) => person.id === relationPersonId)?.name ?? 'the other person'}<input value={secondNewName} onChange={(event) => setSecondNewName(event.target.value)} placeholder="Enter full name" /></label>}
-                        {nameChangeChoice !== 'none' && <label>Effective date<input type="date" value={nameChangeDate} onChange={(event) => setNameChangeDate(event.target.value)} /></label>}
                       </div>
                     )}
                   </>
@@ -810,6 +840,7 @@ function App() {
                   </select>
                 </label>
                 {relationPersonId === '__new__' && <label>New person’s name<input autoFocus required value={newRelativeName} onChange={(event) => setNewRelativeName(event.target.value)} placeholder="Full name" /></label>}
+                <label className="incomplete-control"><input type="checkbox" checked={manualRelationshipIncomplete} onChange={(event) => setManualRelationshipIncomplete(event.target.checked)} /> Mark this relationship as incomplete</label>
                 {relationError && <p className="form-error">{relationError}</p>}
                 <button className="primary-button modal-submit" type="submit"><Check size={16} /> Save relationship</button>
               </form>

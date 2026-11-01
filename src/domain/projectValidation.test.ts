@@ -43,7 +43,7 @@ describe('backup validation', () => {
     }));
     project.partnerships = [{
       id: 'marriage', type: 'marriage', person1Id: 'one', person2Id: 'two', startDate: null, endDate: null,
-      nameChanges: [{ personId: 'three', previousName: 'Three', newName: 'Changed Three', effectiveDate: null }],
+      nameChanges: [{ personId: 'three', previousName: 'Three', newName: 'Changed Three' }],
     }];
     expect(validateProjectForImport(project)).toMatchObject({ success: false, error: expect.stringContaining('outside that partnership') });
   });
