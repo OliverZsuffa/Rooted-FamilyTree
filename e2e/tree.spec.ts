@@ -258,7 +258,7 @@ test('keeps cousin branches aligned through recursive ancestor expansion', async
   const nodePosition = async (name: string) => page.locator('.react-flow__node-person')
     .filter({ hasText: name })
     .evaluate((element) => {
-      const match = (element as HTMLElement).style.transform.match(/translate\\(([-\\d.]+)px,\\s*([-\\d.]+)px\\)/);
+      const match = (element as HTMLElement).style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
       if (!match) throw new Error('Could not read the rendered node position');
       return { x: Number(match[1]), y: Number(match[2]) };
     });
