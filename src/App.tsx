@@ -548,6 +548,21 @@ function App() {
               <p className="panel-dates">{selectedPerson.birthDate || 'Birth date unknown'}{selectedPerson.deathDate ? ` · ${selectedPerson.deathDate}` : ''}</p>
               <p className="generation-label">{generations?.ok ? `Generation ${(generations.generations.get(selectedPerson.id) ?? 0) + 1}` : 'Generation unavailable'}</p>
               {Object.entries(selectedPerson.attributes).length > 0 && <div className="person-details">{Object.entries(selectedPerson.attributes).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value === null ? 'Not set' : String(value)}</strong></div>)}</div>}
+              <div className="relationship-list">
+                <span className="relationship-heading">Relationships</span>
+                {project.parentage.filter((item) => item.parentId === selectedPerson.id || item.childId === selectedPerson.id).map((item) => {
+                  const otherId = item.parentId === selectedPerson.id ? item.childId : item.parentId;
+                  const otherName = project.people.find((person) => person.id === otherId)?.name ?? "Unknown person";
+                  const label = item.parentId === selectedPerson.id ? item.type.replaceAll("_", " ") + " of " + otherName : item.type.replaceAll("_", " ") + ": " + otherName;
+                  return <div className="relationship-row" key={item.id}><span>{label}</span><button onClick={() => editParentage(item)}>Edit</button><button aria-label="Remove relationship" onClick={() => removeParentage(item.id)}><X size={13} /></button></div>;
+                })}
+                {project.partnerships.filter((item) => item.person1Id === selectedPerson.id || item.person2Id === selectedPerson.id).map((item) => {
+                  const otherId = item.person1Id === selectedPerson.id ? item.person2Id : item.person1Id;
+                  const otherName = project.people.find((person) => person.id === otherId)?.name ?? "Unknown person";
+                  return <div className="relationship-row" key={item.id}><span>{item.type} with {otherName}{item.endDate ? " (ended)" : ""}</span><button onClick={() => editPartnership(item)}>Edit</button><button aria-label="Remove partnership" onClick={() => removePartnership(item.id)}><X size={13} /></button></div>;
+                })}
+                {project.parentage.every((item) => item.parentId !== selectedPerson.id && item.childId !== selectedPerson.id) && project.partnerships.every((item) => item.person1Id !== selectedPerson.id && item.person2Id !== selectedPerson.id) && <p className="no-relationships">No relationships yet.</p>}
+              </div>
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
                 <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
