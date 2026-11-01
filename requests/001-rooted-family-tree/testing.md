@@ -1,6 +1,6 @@
 # Testing plan: Rooted family tree
 
-**Status:** Planned. No tests have been run.
+**Status:** Test plan established. Automated checks have been added to GitHub Actions but have not yet been observed completing successfully.
 
 Record actual observations after implementation. Do not mark a test as passed until it has been performed.
 
