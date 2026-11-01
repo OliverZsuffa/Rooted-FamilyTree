@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
   Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
-  Handle, Position,
+  Handle, Position, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
@@ -83,8 +83,10 @@ function App() {
   const [project, setProject] = useState<Project | null>(null);
   const projectRef = useRef<Project | null>(null);
   const dragStartProject = useRef<Project | null>(null);
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const lastFittedStructure = useRef('');
   const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
-  const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [autoLayout, setAutoLayout] = useState<{ key: string; positions: Record<string, { x: number; y: number }> }>({ key: '', positions: {} });
   const [storageReady, setStorageReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveState, setSaveState] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
@@ -205,16 +207,43 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [project, storageReady]);
 
+  const layoutKey = useMemo(() => project ? [
+    project.id,
+    ...project.people.map((person) => person.id).sort(),
+    '|',
+    ...project.parentage.map((relation) => `${relation.id}:${relation.parentId}:${relation.childId}:${relation.type}`).sort(),
+  ].join('|') : '', [project?.id, project?.people, project?.parentage]);
+
   useEffect(() => {
     if (!project) return;
     let active = true;
+    const fallback = arrange(project);
+    setAutoLayout({ key: layoutKey, positions: fallback });
+    if (!project.people.length) return () => { active = false; };
     calculateAutoPositions(project).then((positions) => {
-      if (active && Object.keys(positions).length) setAutoPositions(positions);
+      if (active) setAutoLayout({ key: layoutKey, positions: { ...fallback, ...positions } });
     }).catch(() => {
-      if (active) setAutoPositions(arrange(project));
+      if (active) setAutoLayout({ key: layoutKey, positions: fallback });
     });
     return () => { active = false; };
-  }, [project?.people, project?.parentage]);
+  }, [project, layoutKey]);
+
+  useEffect(() => {
+    if (!project || !reactFlowInstance.current) return;
+    const structureKey = [
+      ...project.people.map((person) => person.id).sort(),
+      '|',
+      ...project.parentage.map((relation) => relation.id).sort(),
+      '|',
+      ...project.partnerships.map((partnership) => partnership.id).sort(),
+    ].join('|');
+    if (structureKey === lastFittedStructure.current) return;
+    lastFittedStructure.current = structureKey;
+    const frame = window.requestAnimationFrame(() => {
+      reactFlowInstance.current?.fitView({ padding: 0.25, duration: 220 });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [project?.people, project?.parentage, project?.partnerships]);
 
   useEffect(() => {
     if (selectedId && search && !project?.people.some((person) => person.id === selectedId && person.name.toLowerCase().includes(search.toLowerCase()))) setSelectedId(null);
@@ -260,7 +289,7 @@ function App() {
 
   const nodes = useMemo<FlowNode[]>(() => {
     if (!project) return [];
-    const automatic = Object.keys(autoPositions).length ? autoPositions : arrange(project);
+    const automatic = autoLayout.key === layoutKey ? autoLayout.positions : arrange(project);
     const visiblePeople = project.people.filter((person) => !search || person.name.toLowerCase().includes(search.toLowerCase()));
     const visibleIds = new Set(visiblePeople.map((person) => person.id));
     const personNodes: PersonFlowNode[] = visiblePeople.map((person) => ({
@@ -283,7 +312,7 @@ function App() {
       });
     }
     return [...personNodes, ...junctionNodes];
-  }, [project, selectedId, search, autoPositions, highlightedIds]);
+  }, [project, selectedId, search, autoLayout, layoutKey, highlightedIds]);
   const edges = useMemo<Edge[]>(() => {
     if (!project) return [];
     const visibleIds = new Set(nodes.map((node) => node.id));
@@ -582,9 +611,16 @@ function App() {
             onNodeDragStop={onNodeDragStop}
             fitView
             fitViewOptions={{ padding: 0.25 }}
+            onInit={(instance) => {
+              reactFlowInstance.current = instance;
+              window.requestAnimationFrame(() => instance.fitView({ padding: 0.25 }));
+            }}
+            panOnDrag
+            nodesDraggable
+            selectionOnDrag={false}
+            zoomOnPinch
             minZoom={0.2}
             maxZoom={1.5}
-            nodesDraggable
             nodesConnectable={false}
             elementsSelectable
             proOptions={{ hideAttribution: true }}
