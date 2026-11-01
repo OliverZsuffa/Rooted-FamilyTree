@@ -75,7 +75,7 @@ function cousinLabel(subjectAncestors: Map<string, number>, relativeAncestors: M
   const descriptions = new Set(best.map((item) => item.degree + ':' + item.removed));
   if (descriptions.size !== 1) return null;
   const { degree, removed } = best[0];
-  return ordinal(degree) + ' cousin' + (removed ? ' ' + removed + ' time' + (removed === 1 ? '' : 's') + ' removed' : '');
+  return ordinal(degree) + ' cousin' + (removed ? ' ' + (removed === 1 ? 'once' : removed === 2 ? 'twice' : removed + ' times') + ' removed' : '');
 }
 
 export function getKinshipLabel(project: Project, subjectId: string, relativeId: string): string | null {

@@ -43,7 +43,7 @@ describe('kinship labels', () => {
       relation('4', 'grandma', 'aunt'),
       relation('5', 'mother', 'child'),
       relation('6', 'aunt', 'cousin'),
-      relation('7', 'cousin', 'niece'),
+      relation('7', 'mother', 'niece'),
       relation('8', 'niece', 'greatNiece'),
     ];
     expect(getKinshipLabel(project, 'child', 'aunt')).toBe('aunt');
