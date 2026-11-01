@@ -408,6 +408,37 @@ function App() {
     setRelationError('');
   };
 
+  const editParentage = (relation: Project['parentage'][number]) => {
+    if (!selectedPerson) return;
+    setEditingRelation({ id: relation.id, kind: 'parentage' });
+    setRelationType(relation.type);
+    setRelationPersonId(relation.parentId === selectedPerson.id ? relation.childId : relation.parentId);
+    setRelationDirection(relation.parentId === selectedPerson.id ? 'child' : 'parent');
+    setRelationError('');
+    setDialog('relationship');
+  };
+
+  const editPartnership = (relation: Project['partnerships'][number]) => {
+    if (!selectedPerson) return;
+    setEditingRelation({ id: relation.id, kind: 'partnership' });
+    setRelationType(relation.type);
+    setRelationPersonId(relation.person1Id === selectedPerson.id ? relation.person2Id : relation.person1Id);
+    setPartnershipStartDate(relation.startDate ?? '');
+    setPartnershipEndDate(relation.endDate ?? '');
+    setRelationError('');
+    setDialog('relationship');
+  };
+
+  const removeParentage = (id: string) => {
+    if (!project || !window.confirm('Remove this family relationship?')) return;
+    commitProject(syncGenerationRows({ ...project, parentage: project.parentage.filter((item) => item.id !== id) }));
+  };
+
+  const removePartnership = (id: string) => {
+    if (!project || !window.confirm('Remove this partnership?')) return;
+    commitProject({ ...project, partnerships: project.partnerships.filter((item) => item.id !== id) });
+  };
+
   const deletePerson = () => {
     if (!project || !selectedPerson || !window.confirm(`Delete ${selectedPerson.name || 'this person'} and their relationships?`)) return;
     const id = selectedPerson.id;
@@ -519,7 +550,7 @@ function App() {
               {Object.entries(selectedPerson.attributes).length > 0 && <div className="person-details">{Object.entries(selectedPerson.attributes).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value === null ? 'Not set' : String(value)}</strong></div>)}</div>}
               <div className="panel-actions">
                 <button className="secondary-button" onClick={() => openPerson(selectedPerson)}>Edit</button>
-                <button className="secondary-button" onClick={() => { setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
+                <button className="secondary-button" onClick={() => { setEditingRelation(null); setRelationPersonId(''); setRelationType('biological_parent'); setPartnershipStartDate(''); setPartnershipEndDate(''); setRelationError(''); setDialog('relationship'); }}>Add relationship</button>
                 <button className="danger-button" onClick={deletePerson} aria-label="Delete person"><Trash2 size={16} /></button>
               </div>
             </aside>
@@ -567,9 +598,9 @@ function App() {
             ) : (
               <form onSubmit={saveRelationship}>
                 <p className="eyebrow">CONNECT YOUR TREE</p>
-                <h2 id="dialog-title">Add a relationship</h2>
+                <h2 id="dialog-title">{editingRelation ? 'Edit relationship' : 'Add a relationship'}</h2>
                 <label>Relationship type
-                  <select value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType | 'marriage' | 'partnership')}>
+                  <select disabled={!!editingRelation} value={relationType} onChange={(event) => setRelationType(event.target.value as ParentageType | 'marriage' | 'partnership')}>
                     {parentageTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                     <option value="marriage">Marriage</option>
                     <option value="partnership">Non marital partnership</option>
