@@ -4,7 +4,7 @@ import {
   Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Download, LayoutGrid, Plus, Search, Sprout, Trash2, Upload, X } from 'lucide-react';
+import { Check, Download, LayoutGrid, Plus, Redo2, Search, Sprout, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { createEmptyProject, type ParentageType, type Person, type Project } from './domain/schema';
 import { calculateGenerations, validateParentage } from './domain/relationships';
 import { calculateAutoPositions } from './domain/layout';
@@ -80,6 +80,8 @@ function arrange(project: Project): Record<string, { x: number; y: number }> {
 
 function App() {
   const [project, setProject] = useState<Project | null>(null);
+  const projectRef = useRef<Project | null>(null);
+  const [history, setHistory] = useState<{ past: Project[]; future: Project[] }>({ past: [], future: [] });
   const [autoPositions, setAutoPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [storageReady, setStorageReady] = useState(false);
   const [saveState, setSaveState] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
@@ -104,16 +106,51 @@ function App() {
   const [needRefresh, setNeedRefresh] = useState(false);
   const { updateServiceWorker } = useRegisterSW({ immediate: true, onNeedRefresh: () => setNeedRefresh(true) });
 
+  const commitProject = useCallback((next: Project | ((current: Project) => Project)) => {
+    const current = projectRef.current;
+    if (!current) return;
+    const updated = typeof next === 'function' ? next(current) : next;
+    if (updated === current) return;
+    setHistory((state) => ({ past: [...state.past, current].slice(-50), future: [] }));
+    projectRef.current = updated;
+    setProject(updated);
+  }, []);
+
+  const undo = () => {
+    const current = projectRef.current;
+    setHistory((state) => {
+      if (!current || !state.past.length) return state;
+      const previous = state.past[state.past.length - 1];
+      projectRef.current = previous;
+      setProject(previous);
+      return { past: state.past.slice(0, -1), future: [current, ...state.future] };
+    });
+  };
+
+  const redo = () => {
+    setHistory((state) => {
+      if (!state.future.length) return state;
+      const next = state.future[0];
+      projectRef.current = next;
+      setProject(next);
+      return { past: [...state.past, next].slice(-50), future: state.future.slice(1) };
+    });
+  };
+
   useEffect(() => {
     let active = true;
     loadProject().then((saved) => {
       if (!active) return;
-      setProject(saved ?? createEmptyProject());
+      const initial = saved ?? createEmptyProject();
+      projectRef.current = initial;
+      setProject(initial);
       setStorageReady(true);
       setSaveState('saved');
     }).catch(() => {
       if (!active) return;
-      setProject(createEmptyProject());
+      const initial = createEmptyProject();
+      projectRef.current = initial;
+      setProject(initial);
       setStorageReady(true);
       setSaveState('error');
     });
@@ -246,7 +283,7 @@ function App() {
         return;
       }
       if (window.confirm('Replace your current family tree with this backup?')) {
-        setProject(syncGenerationRows(parsed.data));
+        commitProject(syncGenerationRows(parsed.data));
         setSelectedId(null);
         setSearch('');
       }
@@ -284,13 +321,13 @@ function App() {
       else attributes[key] = row.value;
     }
     if (editingPerson) {
-      setProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
+      commitProject({ ...project, people: project.people.map((person) => person.id === editingPerson.id
         ? { ...person, name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null }
         : person) });
       setSelectedId(editingPerson.id);
     } else {
       const person: Person = { id: crypto.randomUUID(), name: personName.trim(), birthDate: birthDate || null, deathDate: deathDate || null, attributes, displayAttribute: displayAttribute || null };
-      setProject({ ...project, people: [...project.people, person] });
+      commitProject({ ...project, people: [...project.people, person] });
       setSelectedId(person.id);
     }
     setDialog(null);
@@ -305,7 +342,7 @@ function App() {
     event.preventDefault();
     if (!project || !selectedPerson || !relationPersonId) return;
     if (relationType === 'marriage' || relationType === 'partnership') {
-      setProject({ ...project, partnerships: [...project.partnerships, {
+      commitProject({ ...project, partnerships: [...project.partnerships, {
         id: crypto.randomUUID(), type: relationType, person1Id: selectedPerson.id, person2Id: relationPersonId,
         startDate: partnershipStartDate || null, endDate: partnershipEndDate || null,
       }] });
@@ -320,7 +357,7 @@ function App() {
     };
     const error = validateParentage(project, relation);
     if (error) { setRelationError(error); return; }
-    setProject(syncGenerationRows({ ...project, parentage: [...project.parentage, relation] }));
+    commitProject(syncGenerationRows({ ...project, parentage: [...project.parentage, relation] }));
     setDialog(null);
     setRelationError('');
   };
@@ -328,7 +365,7 @@ function App() {
   const deletePerson = () => {
     if (!project || !selectedPerson || !window.confirm(`Delete ${selectedPerson.name || 'this person'} and their relationships?`)) return;
     const id = selectedPerson.id;
-    setProject(syncGenerationRows({
+    commitProject(syncGenerationRows({
       ...project,
       people: project.people.filter((person) => person.id !== id),
       parentage: project.parentage.filter((item) => item.parentId !== id && item.childId !== id),
@@ -341,7 +378,7 @@ function App() {
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
     const moved = changes.filter((change) => change.type === 'position' && change.position);
     if (!moved.length) return;
-    setProject((current) => {
+    commitProject((current) => {
       if (!current) return current;
       const result = calculateGenerations(current);
       if (!result.ok) return current;
@@ -367,11 +404,13 @@ function App() {
         <a className="brand" href="./" aria-label="Rooted home"><span className="brand-mark"><Sprout size={19} strokeWidth={1.8} /></span><span>rooted</span></a>
         <div className="toolbar">
           <span className="save-state"><span className={`save-dot save-dot-${saveState}`} />{saveState === 'loading' ? 'Opening' : saveState === 'saving' ? 'Saving' : saveState === 'error' ? 'Save issue' : 'Saved'}</span>
+          <button className="icon-button" aria-label="Undo" title="Undo" disabled={!history.past.length} onClick={undo}><Undo2 size={16} /></button>
+          <button className="icon-button" aria-label="Redo" title="Redo" disabled={!history.future.length} onClick={redo}><Redo2 size={16} /></button>
           <button className="icon-button" aria-label="Search people" title="Search" onClick={() => setSearchOpen((value) => !value)}><Search size={17} /></button>
           <button className="icon-button" aria-label="Export backup" title="Export backup" onClick={exportProject}><Download size={16} /></button>
           <button className="icon-button" aria-label="Import backup" title="Import backup" onClick={() => importInput.current?.click()}><Upload size={16} /></button>
           <input ref={importInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importProject(event.target.files?.[0])} />
-          <button className="icon-button" aria-label="Automatic layout" title="Reset automatic layout" onClick={() => setProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={16} /></button>
+          <button className="icon-button" aria-label="Automatic layout" title="Reset automatic layout" onClick={() => commitProject({ ...project, layout: { manualPositions: {} } })}><LayoutGrid size={16} /></button>
           <button className="primary-button" onClick={() => openPerson()}><Plus size={16} /> Add person</button>
         </div>
       </header>
