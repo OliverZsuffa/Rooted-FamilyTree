@@ -73,7 +73,7 @@ export function buildRelationshipEdges(
     ...edge,
     style: {
       ...edge.style,
-      opacity: !selectedId || (highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15,
+      opacity: !selectedId || (edge.source.startsWith('family:') ? highlightedIds.has(edge.target) : edge.target.startsWith('family:') ? highlightedIds.has(edge.source) : highlightedIds.has(edge.source) && highlightedIds.has(edge.target)) ? 1 : 0.15,
     },
   }));
 }
