@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react';
 import {
-  Background, Controls, ReactFlow, type Edge, type Node, type NodeProps,
+  Background, Controls, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps,
   Handle, Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -227,15 +227,20 @@ function App() {
     setSelectedId(null);
   };
 
-  const onNodeDragStop = useCallback((_event: globalThis.MouseEvent | TouchEvent, node: Node) => {
+  const onNodesChange = useCallback((changes: NodeChange<PersonFlowNode>[]) => {
+    const moved = changes.filter((change) => change.type === 'position' && change.position);
+    if (!moved.length) return;
     setProject((current) => {
       if (!current) return current;
       const result = calculateGenerations(current);
-      const generation = result.ok ? result.generations.get(node.id) ?? 0 : 0;
-      return {
-        ...current,
-        layout: { manualPositions: { ...current.layout.manualPositions, [node.id]: { x: node.position.x, y: generation * 190 } } },
-      };
+      if (!result.ok) return current;
+      const manualPositions = { ...current.layout.manualPositions };
+      for (const change of moved) {
+        if (change.type !== 'position' || !change.position) continue;
+        const generation = result.generations.get(change.id) ?? 0;
+        manualPositions[change.id] = { x: change.position.x, y: generation * 190 };
+      }
+      return { ...current, layout: { manualPositions } };
     });
   }, []);
 
@@ -280,7 +285,7 @@ function App() {
             nodeTypes={nodeTypes}
             onNodeClick={(_event, node) => setSelectedId(node.id)}
             onPaneClick={() => setSelectedId(null)}
-            onNodeDragStop={onNodeDragStop}
+            onNodesChange={onNodesChange}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
