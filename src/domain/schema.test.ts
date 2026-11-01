@@ -8,7 +8,7 @@ describe('project schema', () => {
 
   it('rejects invalid calendar dates', () => {
     const project = createEmptyProject();
-    project.people = [{ id: 'p', name: 'Person', birthDate: '2026-02-31', deathDate: null, attributes: {}, displayAttribute: null }];
+    project.people = [{ id: 'p', name: 'Person', gender: null, nameHistory: [], birthDate: '2026-02-31', deathDate: null, attributes: {}, displayAttribute: null }];
     expect(() => projectSchema.parse(project)).toThrow();
   });
 
