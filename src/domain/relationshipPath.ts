@@ -74,15 +74,39 @@ export function findRelationshipPath(project: Project, firstId: string, secondId
   const uniquePaths = paths.filter((path, index) =>
     paths.findIndex((other) => other.relationshipIds.join('|') === path.relationshipIds.join('|')
       && other.personIds.join('|') === path.personIds.join('|')) === index);
-  const kinship = getKinshipLabel(project, firstId, secondId);
+  let kinship = getKinshipLabel(project, firstId, secondId);
+  const isPartner = (a: string, b: string) => project.partnerships.some((item) =>
+    (item.person1Id === a && item.person2Id === b) || (item.person1Id === b && item.person2Id === a));
+  const parentIds = (id: string) => project.parentage.filter((item) =>
+    (item.type === 'biological_parent' || item.type === 'adoptive_parent') && item.childId === id).map((item) => item.parentId);
+  const areSiblings = (a: string, b: string) => parentIds(a).some((id) => parentIds(b).includes(id));
+  if (!kinship) {
+    const subjectParents = parentIds(firstId);
+    const subjectChildren = project.parentage.filter((item) =>
+      (item.type === 'biological_parent' || item.type === 'adoptive_parent') && item.parentId === firstId).map((item) => item.childId);
+    const relativeParents = parentIds(secondId);
+    const partnerIds = project.partnerships.flatMap((item) =>
+      item.person1Id === firstId ? [item.person2Id] : item.person2Id === firstId ? [item.person1Id] : []);
+    const siblingOfSubject = project.people.some((person) => person.id !== firstId && areSiblings(firstId, person.id) && isPartner(person.id, secondId));
+    const siblingOfPartner = partnerIds.some((partnerId) => areSiblings(partnerId, secondId));
+    if (siblingOfSubject || siblingOfPartner) kinship = 'sibling-in-law';
+    else if (subjectParents.some((parentId) => isPartner(parentId, secondId))
+      || partnerIds.some((partnerId) => parentIds(partnerId).includes(secondId))) kinship = 'parent-in-law';
+    else if (subjectChildren.some((childId) => isPartner(childId, secondId))
+      || partnerIds.some((partnerId) => project.parentage.some((item) =>
+        (item.type === 'biological_parent' || item.type === 'adoptive_parent') && item.parentId === secondId && item.childId === partnerId))) kinship = 'child-in-law';
+  }
   const directPartnership = uniquePaths[0].relationshipIds.length === 1
     && project.partnerships.some((item) => item.id === uniquePaths[0].relationshipIds[0]);
   const hasPartnership = uniquePaths[0].kinds.includes('partnership');
   const label = kinship ?? (directPartnership ? 'partner' : hasPartnership ? 'related through marriage or partnership' : 'connected through recorded relationships');
   const selected = uniquePaths[0];
   const familyGroupIds = getFamilyGroups(project).filter((group) =>
-    group.parentIds.some((parentId) => selected.personIds.includes(parentId))
-    && group.childIds.some((childId) => selected.personIds.includes(childId)))
+    selected.personIds.some((parentId, index) => index < selected.personIds.length - 1
+      && group.parentIds.includes(parentId)
+      && group.childIds.includes(selected.personIds[index + 1])
+      || index > 0 && group.parentIds.includes(parentId)
+      && group.childIds.includes(selected.personIds[index - 1])))
     .map((group) => group.id);
 
   return {
