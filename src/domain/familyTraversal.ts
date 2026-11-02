@@ -125,8 +125,19 @@ function optimiseRows(
   const generationByPerson = new Map<string, number>();
   for (const [generation, ids] of rows) for (const id of ids) generationByPerson.set(id, generation);
   const edges: LayoutEdge[] = [];
+  const parentFamilySetCount = new Map<string, number>();
+  const countedParentSets = new Set<string>();
   for (const childId of componentIds) {
-    for (const parentId of parentsByChild.get(childId) ?? []) edges.push({ parentId, childId });
+    const parentIds = parentsByChild.get(childId) ?? [];
+    for (const parentId of parentIds) {
+      edges.push({ parentId, childId });
+      const familySetKey = parentIds.join('|');
+      const key = parentId + '\\u0000' + familySetKey;
+      if (!countedParentSets.has(key)) {
+        countedParentSets.add(key);
+        parentFamilySetCount.set(parentId, (parentFamilySetCount.get(parentId) ?? 0) + 1);
+      }
+    }
   }
 
   // Exact parent sets are indivisible blocks. Empty parent sets stay singleton.
@@ -173,6 +184,9 @@ function optimiseRows(
         return ids;
       };
       const candidateBlocks = [...blocks].sort((a, b) => {
+        const anchorPriority = (block: string[]) => Math.max(...block.map(id => parentFamilySetCount.get(id) ?? 0));
+        const anchorDifference = anchorPriority(b) - anchorPriority(a);
+        if (anchorDifference) return anchorDifference;
         const average = (block: string[]) => {
           const values = related(block).map(id => rank.get(id)!);
           return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length
